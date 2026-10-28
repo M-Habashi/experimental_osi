@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<link rel="icon" type="image/svg+xml" href="../../../logo.svg">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fabby OSI — design &amp; validation report</title>
+<style>
+:root{
+  --surface:#fcfcfb; --page:#f9f9f7; --ink:#0b0b0b; --ink2:#52514e;
+  --muted:#898781; --grid:#e1e0d9; --axis:#c3c2b7;
+  --border:rgba(11,11,11,.10);
+  --blue:#2a78d6; --yellow:#eda100; --red:#e34948; --aqua:#1baf7a;
+  --violet:#4a3aa7;
+  --band:rgba(137,135,129,.18);
+}
+:root[data-theme="dark"]{
+  --surface:#1a1a19; --page:#0d0d0d; --ink:#ffffff; --ink2:#c3c2b7;
+  --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+  --border:rgba(255,255,255,.10);
+  --blue:#3987e5; --yellow:#c98500; --red:#e66767; --aqua:#199e70;
+  --violet:#9085e9;
+  --band:rgba(137,135,129,.22);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --surface:#1a1a19; --page:#0d0d0d; --ink:#ffffff; --ink2:#c3c2b7;
+    --muted:#898781; --grid:#2c2c2a; --axis:#383835;
+    --border:rgba(255,255,255,.10);
+    --blue:#3987e5; --yellow:#c98500; --red:#e66767; --aqua:#199e70;
+    --violet:#9085e9;
+    --band:rgba(137,135,129,.22);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;}
+.wrap{max-width:1060px;margin:0 auto;padding:28px 20px 80px}
+h1{font-size:26px;margin:8px 0 2px}
+h2{font-size:19px;margin:44px 0 10px;border-top:1px solid var(--grid);padding-top:26px}
+h3{font-size:15.5px;margin:24px 0 6px}
+p{color:var(--ink2);max-width:78ch}
+.sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.chip{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:8px 14px;font-size:13px;color:var(--ink2)}
+.chip b{color:var(--ink);font-size:17px;display:block}
+.chip .ok{color:#0ca30c}
+code,.mono{font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+.eq{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:12px 18px;margin:10px 0;font-family:ui-monospace,Consolas,monospace;
+  font-size:13.5px;color:var(--ink);overflow-x:auto;white-space:pre;line-height:1.7}
+.note{border-left:3px solid var(--yellow);padding:2px 0 2px 12px;margin:12px 0}
+.note p{margin:4px 0}
+table{border-collapse:collapse;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;font-size:13px;margin:12px 0;display:block;overflow-x:auto;max-width:100%}
+th,td{padding:6px 12px;text-align:left;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--muted);font-weight:600}
+td:first-child{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:16px 0 10px}
+.tab{border:1px solid var(--border);background:var(--surface);color:var(--ink2);
+  border-radius:8px;padding:7px 12px;font-size:12.5px;cursor:pointer;user-select:none}
+.tab:hover{border-color:var(--muted)}
+.tab.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.tab .pf{font-size:10.5px;display:block;margin-top:1px}
+.pf .p{color:#0ca30c}.tab.on .pf .p{color:#7be07b}
+.pf .f{color:var(--red)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px 8px;margin:10px 0}
+.card h4{margin:0 0 2px;font-size:14px}
+.card .cs{color:var(--muted);font-size:12px;margin-bottom:8px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);
+  margin:2px 0 6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:0;border-top:2.5px solid;display:inline-block}
+.legend i.dash{border-top-style:dashed}
+.legend i.band{width:14px;height:10px;border:none;background:var(--band)}
+.detail{font-size:12px;color:var(--muted);font-family:ui-monospace,Consolas,monospace;
+  white-space:pre-wrap;margin:8px 0 6px;line-height:1.6}
+.detail .ok{color:#0ca30c}.detail .fail{color:var(--red);font-weight:700}
+svg{display:block;width:100%;height:auto}
+.hint{font-size:12px;color:var(--muted);margin:4px 2px 10px}
+.ttip{position:fixed;pointer-events:none;background:var(--surface);
+  border:1px solid var(--border);box-shadow:0 4px 14px rgba(0,0,0,.15);
+  border-radius:8px;padding:8px 11px;font-size:12px;z-index:50;display:none;min-width:150px}
+.ttip .tt-t{color:var(--muted);margin-bottom:4px}
+.ttip .row{display:flex;align-items:center;gap:7px;margin:2px 0}
+.ttip .row i{width:12px;border-top:2.5px solid;display:inline-block}
+.ttip .row b{margin-left:auto;font-variant-numeric:tabular-nums}
+.ttip .row span{color:var(--ink2)}
+.themebtn{position:fixed;top:14px;right:16px;background:var(--surface);
+  border:1px solid var(--border);color:var(--ink2);border-radius:8px;
+  padding:6px 11px;font-size:12px;cursor:pointer;z-index:60}
+.flow{display:flex;gap:0;align-items:stretch;flex-wrap:wrap;margin:16px 0}
+.fbox{background:var(--surface);border:1px solid var(--border);border-radius:9px;
+  padding:10px 13px;font-size:12.5px;max-width:200px}
+.fbox b{display:block;font-size:13px;margin-bottom:3px}
+.fbox span{color:var(--ink2)}
+.farr{align-self:center;color:var(--muted);padding:0 8px;font-size:17px}
+</style>
+</head>
+<body>
+<button class="themebtn" onclick="toggleTheme()">◐ theme</button>
+<div class="wrap">
+
+<h1>fabby — a continuous NCF-margin OSI</h1>
+<div class="sub">research/fable_2 · target 0.55 · step 0.125 s · built 2026-07-10 ·
+one estimator, two readings + a prediction, one rate law — no calibration phase, no trips, no latches, no NaN</div>
+
+<div class="chips">
+  <div class="chip"><b class="ok">10 / 10</b>synthetic suite (gpt5: 10/10, fable at HEAD: 8/10)</div>
+  <div class="chip"><b>90.7</b>fabby score — updated gpt5_6: <b>94.8</b>, fable: 73.2 (§4, §6)</div>
+  <div class="chip"><b>0.28–2.0 s</b>damage &rarr; authority moving</div>
+  <div class="chip"><b>~1.3 s</b>sprint: floor &rarr; full authority once verified</div>
+  <div class="chip"><b>1.5 s</b>warm-up to first reading</div>
+  <div class="chip"><b>0</b>NaN readings, everywhere</div>
+</div>
+
+<h2>1 · The idea: remove, don't add</h2>
+<p>
+fable answers "is the loop still stable?" with two spectral rings, a calibration
+phase, a coherence gate, an input-power gate, a sidelobe guard, two CUSUM trip
+detectors, a regime-change detector, an evidence gate and a 20-knob authority law
+with latched ceilings. Each piece exists because a simpler draft failed some record
+— but the pieces interact, and the failures we saw (GDBqFpKb stuck at a&nbsp;=&nbsp;0.2
+forever; NaN readings whenever a gate blanks) are failures of the <em>interactions</em>.
+</p>
+<p>
+fabby starts from the observation that almost all of those guards exist to answer one
+question: <b>"which frequencies am I allowed to believe?"</b> There is a single
+mathematical device that answers it without any gate: <b>prior regularization</b>.
+Believe each bin exactly in proportion to how strongly the command drives it; where it
+isn't driven, believe the healthy prior. Every reading then degrades <em>continuously</em>
+toward "no evidence = healthy ceiling" instead of flipping through branches, so the
+indicator can be simple because it has nothing to protect itself from.
+</p>
+
+<div class="flow">
+  <div class="fbox"><b>0.5 s Hann segment</b><span>every 0.125 s step, one FFT of the
+  tap u and the response dm</span></div>
+  <div class="farr">&rarr;</div>
+  <div class="fbox"><b>forgetting spectra</b><span>S<sub>uu</sub>, S<sub>yy</sub>,
+  S<sub>uy</sub> — exponential memory &tau; &asymp; 1 s. The warm-up IS the memory
+  filling: &le; 1.5 s</span></div>
+  <div class="farr">&rarr;</div>
+  <div class="fbox"><b>regularized FRF</b><span>T&#770; = S<sub>uy</sub>/(S<sub>uu</sub>+&lambda;),
+  &lambda; = 10% of mean input power</span></div>
+  <div class="farr">&rarr;</div>
+  <div class="fbox"><b>two margins + a prediction</b><span>driven band: chordal NCF
+  margin of T&#770;. Quiet band: sensitivity growth of the output floor.
+  Prediction: margin at higher authority from &alpha;L&#770;</span></div>
+  <div class="farr">&rarr;</div>
+  <div class="fbox"><b>b = min, always finite</b><span>evidence-weighted toward the
+  0.707 ceiling as the drive dies; the prediction gates the recovery sprint</span></div>
+</div>
+
+<h2>2 · The math</h2>
+
+<h3>2.1 Driven band — the project margin, regularized</h3>
+<p>The quantity is unchanged from the project definition: with the estimated
+closed-loop FRF T&#770;(&omega;) from the OSI tap to the measured displacement, the
+generalized (chordal) NCF stability margin is</p>
+<div class="eq">b(&omega;) = 1 / ( &radic;2 · &radic;( |1−T&#770;(&omega;)|² + |T&#770;(&omega;)|² ) ),      b_st = min over band of movmedian₃( b(&omega;) )</div>
+<p>capped at its mathematical ceiling 1/&radic;2 &asymp; 0.707 (T&#770; = S&#772;T&#772;
+identity: |S|²+|T|² &ge; ½ always, with equality only at T = ½ — so 0.707 literally means
+"as far from instability as any loop can be"). The FRF estimate is the
+<b>ridge-regularized least squares</b> solution</p>
+<div class="eq">T&#770;(&omega;) = S<sub>uy</sub>(&omega;) / ( S<sub>uu</sub>(&omega;) + &lambda; ),      &lambda; = prior_frac · mean<sub>band</sub>( S<sub>uu</sub> ),  prior_frac = 0.10</div>
+<p>
+which is the Bayesian posterior mean under a zero-mean prior on T&#770;. Where the
+command has power (S<sub>uu</sub> &raquo; &lambda;) the data win and T&#770; is the
+ordinary H1 estimate; where it hasn't (S<sub>uu</sub> &laquo; &lambda;) the estimate
+shrinks to 0 and the chordal margin of 0 is the ceiling — "nothing observable is
+wrong". This single term is what replaces fable's coherence gate, input-power gate
+and sidelobe guard: a noise bin cannot fake a deficit because a noise bin has no
+leverage on T&#770;. There is no bin mask, no minimum-bin count, no NaN.
+</p>
+
+<h3>2.2 Quiet band — margin from sensitivity growth</h3>
+<p>Damage at frequencies the command doesn't drive (the lowband-earthquake case) never
+appears in T&#770;. But the output noise floor there is shaped by the sensitivity:
+P<sub>yy</sub>(&omega;) &asymp; |S(&omega;)|²·N&#8320;(&omega;), and the chordal margin obeys
+b &le; 1/(&radic;2·|S|). So the <b>growth</b> of the self-normalized floor against the
+model shape |S&#8320;|² estimates the margin loss directly:</p>
+<div class="eq">q(&omega;) = P&#772;<sub>yy</sub>(&omega;) / |S&#8320;(&omega;)|²   (self-normalized by its quiet-band median)
+g(&omega;*) = max over quiet bins of movmean₇( q )        ("quiet": S<sub>uu</sub> &lt; &lambda;, both memories)
+b_q = b&#8320;(&omega;*) / &radic;( g(&omega;*) / g_thr )</div>
+<p>
+b&#8320;(&omega;*) is the nominal margin curve of the initial loop model at the growing
+bin — the anchor the growth discounts. The 7-bin pooling matches the physical bandwidth
+of an emerging unstable mode (the 5k-plant bump spans ~12 Hz above 2 dB) and buys the
+variance reduction that lets 1–2 dB of growth be evidence. g_thr (1 dB) recenters the
+statistic so the <em>typical healthy</em> pooled maximum reads the anchor — and the map
+is deliberately smooth with <b>no saturation kink</b>, because the authority law needs
+b_q to be a monotone continuous function of growth to have an equilibrium instead of a
+relaxation oscillation (the single most important lesson of this redesign — see §5).
+</p>
+
+<h3>2.3 Evidence weight — no drive, no verdict, no NaN</h3>
+<p>On the real rig the OSI tap u = G_T(dd_fem − iff·fm) contains the force echo of dm,
+so an <em>idle</em> tap still correlates with the output and would fake a terrible
+margin (GDBqFpKb reads b &asymp; 0.13 before the earthquake even starts). The fix is the
+same idea once more: weight the verdict by how much exogenous drive actually exists,</p>
+<div class="eq">w = clip( rms(u)/quiet_mm − 1, 0, 1 ),   quiet_mm = 0.05 mm
+b = w · min(b_st, b_q) + (1−w) · 0.707</div>
+<p>
+Below 0.05 mm rms the tap is echo and sensor noise — the reading blends to the healthy
+ceiling instead of going NaN, which is precisely what lets authority recover through
+silence (GDB's stuck-at-0.2 deadlock cannot happen). Full trust needs only 0.1 mm; the
+suite commands run at 0.15 mm rms and the GDB earthquake at 0.14–0.28.
+</p>
+
+<h3>2.4 The authority prediction — how recovery gets to be fast AND safe</h3>
+<p>The regularized FRF contains more than the current margin: with
+L&#770; = T&#770;/(1−T&#770;), the margin the loop <em>would</em> have at a relative
+gain multiplier &alpha; is the chordal margin of &alpha;L&#770; — computable for every
+&alpha; from data already in hand. fabby evaluates it on a small log grid and the law
+uses the <b>minimum along the path</b> from &alpha;=1 up to full authority (the margin
+is not monotone in gain, and authority passes through every intermediate value):</p>
+<div class="eq">pred(&alpha;) = min over driven bins of  |1+&alpha;L&#770;| / &radic;(2(1+|&alpha;L&#770;|²)),   &alpha; &isin; [1 … min(a_max/a, 4)]
+&alpha;_safe   = the &alpha; where the path-min of pred crosses target + 0.025   (certified-safe multiplier)
+blind    = [quiet band populated] &times; w      (observability of the certification)</div>
+<p>Two guards make the certification honest. The <b>horizon cap</b> (&alpha; &le; 4): a
+weak-signal FRF extrapolated 10&times; is noise, so the law only ever certifies "the
+next factor of 4 is safe", climbs, and re-verifies from fresh data — a rolling
+certification that still reaches full authority in a couple of estimator lengths. The
+<b>observability gate</b>: when the quiet band is populated, the command does not
+drive the frequencies where this rig actually goes unstable — the driven-band FRF then
+certifies nothing about higher authority there, and the quiet statistic itself is
+blind at reduced gain (growth below its noise floor). A certification that does not
+cover the hazard band is not a certification, so <code>blind</code> disables the
+sprint and regulation rides the always-safe creep. In every situation where recovery
+should be fast — broadband repair or heal, pulse over, test over, silence — the quiet
+set is empty and the sprint has full authority to act.</p>
+
+<h3>2.5 The authority law — one rate equation</h3>
+<div class="eq">d ln a / dt =  −(k_dn·d + k_dn2·d²)                       d = relu(target − b)/target        shed
+              + k_creep·s                                 s = relu(b − target − 0.025)/target  creep
+              + min(k_sprint·ln &alpha;_safe, r_max)·conf·(1−blind)                              sprint
+
+conf &larr; conf + (conf_raw − conf)·dt/&tau;,   &tau; = 1.2 s up / 0.8 s down
+conf_raw = sat( (b − target − 0.03)/0.05 )</div>
+<p>
+A multiplicative integrator on ln&nbsp;a, clipped to [0.08, 1], two state variables
+(a, conf). The <b>shed is quadratic in the deficit</b>: a grazing dip (d&asymp;0.05)
+nibbles at ~0.3&nbsp;ln/s while a collapsing reading (d&asymp;0.4) sheds at ~6&nbsp;ln/s —
+large authority drops only happen when the margin evidence itself is large, which is
+the "minimize sudden drops unless strongly justified" requirement made structural.
+The <b>creep</b> keeps regulation alive where the model is blind. The <b>sprint</b>
+drives authority toward the certified-safe point a·&alpha;_safe at a rate proportional
+to the certified distance ln&nbsp;&alpha;_safe (capped 2&nbsp;ln/s — floor to full in
+~1.3&nbsp;s): for a healed or idle plant &alpha;_safe pins at the horizon and it runs
+flat out, while for a damaged plant it <em>tapers smoothly to zero exactly at the
+predicted target crossing</em> — an over-shed is reclaimed in a couple of seconds, but
+authority never charges past what the model can defend. conf multiplies it so the
+reading must sit clearly above target for a second or two first — trust builds slowly
+and evaporates instantly. No confirmation counters, no commit gate, no latches, no
+cooldowns.
+</p>
+
+<h2>3 · What was removed, and what pays for it</h2>
+<table>
+<tr><th>fable mechanism</th><th>fabby replacement</th></tr>
+<tr><td>coherence gate + null calibration</td><td rowspan="3">ridge prior &lambda; (§2.1) — undriven bins have no leverage</td></tr>
+<tr><td>input-power gate (35 dB)</td></tr>
+<tr><td>sidelobe / leakage guard (25 dB)</td></tr>
+<tr><td>80-window calibration phase</td><td>none: the model shape |S&#8320;|² is the baseline; warm-up = memory fill (&le;1.5 s)</td></tr>
+<tr><td>residual z-score + engage/expire hysteresis</td><td>smooth growth&rarr;margin map (§2.2), deadband in the law</td></tr>
+<tr><td>2 CUSUM fast-trip detectors + trip undo</td><td>proportional shed on a fast estimator (&tau;&asymp;1 s) — a collapse reads huge deficit within ~0.3 s</td></tr>
+<tr><td>regime-change detector + rebaseline</td><td>nothing to rebaseline: forgetting spectra follow the excitation by themselves</td></tr>
+<tr><td>evidence gate (NaN) + blind probe + latch ceiling</td><td>evidence weight w (§2.3): silence reads healthy, recovery is the ordinary sprint</td></tr>
+<tr><td>prediction curve + safe-interval search + pred_floor/caps</td><td>same idea, minimal: certified-safe &alpha;_safe from the path-min over a capped horizon (§2.4)</td></tr>
+<tr><td>latched post-event ceiling (200 s memory)</td><td>observability gate: sprint off while the hazard band is command-undriven; nothing remembered</td></tr>
+<tr><td>5 s window + 0.6 s fast ring (two scales)</td><td>one scale: &tau;_s = 0.9 s driven / &tau;_q = 1.25 s quiet</td></tr>
+</table>
+<div class="note"><p><b>What pays for it:</b> a shorter memory means a noisier margin
+(&sigma; &asymp; 0.02–0.04 vs fable's ~0.01 slow branch), which the law absorbs in the
+deadband, the quadratic shed and the conf gate rather than in the estimator. Post-event
+caution shrank from fable's 200 s latch to a ~10 s envelope — the model-verified sprint
+is what makes that safe: it re-checks the driven band every step on fresh data instead
+of remembering that something once went wrong.</p></div>
+
+<h3>Parameters (complete list)</h3>
+<table>
+<tr><th>indicator</th><th>value</th><th>meaning</th></tr>
+<tr><td>segment_s / step_s</td><td>0.5 / 0.125 s</td><td>FFT segment, update cadence</td></tr>
+<tr><td>tau_s / tau_q</td><td>0.9 / 1.25 s</td><td>driven / quiet spectral memory (speed &harr; noise)</td></tr>
+<tr><td>prior_frac</td><td>0.10</td><td>ridge prior vs mean input power (which bins to believe)</td></tr>
+<tr><td>g_thr_db / pool_n</td><td>1.0 dB / 7</td><td>healthy pooled-max recentering / mode bandwidth</td></tr>
+<tr><td>quiet_mm</td><td>0.05 mm</td><td>tap rms below which there is no evidence</td></tr>
+<tr><td>warm_s</td><td>1.5 s</td><td>report ceiling until the memory has filled</td></tr>
+<tr><td>pred grid / horizon</td><td>13 pts, &alpha; &le; 4</td><td>authority-prediction path (§2.4)</td></tr>
+<tr><td>band / quiet band / line reject</td><td>2–100 / 28–100 / 58–62 Hz</td><td>project constants (shared with fable)</td></tr>
+<tr><th>authority</th><th>value</th><th>meaning</th></tr>
+<tr><td>target</td><td>0.55</td><td>margin to regulate onto</td></tr>
+<tr><td>k_dn / k_dn2</td><td>6 / 25</td><td>linear + quadratic shed (gentle grazes, fast collapses)</td></tr>
+<tr><td>k_creep / db_up</td><td>0.5 / 0.025</td><td>model-free proportional recovery + rest band</td></tr>
+<tr><td>k_sprint / r_max</td><td>3 / 2.0</td><td>sprint per ln of certified headroom, capped (floor&rarr;full ~1.3 s)</td></tr>
+<tr><td>conf_off / conf_w / &tau;_conf</td><td>0.03 / 0.05 / 1.2 s up, 0.8 s down</td><td>sprint trust: builds slowly, evaporates instantly</td></tr>
+<tr><td>a_min / a_max</td><td>0.08 / 1</td><td>authority bounds</td></tr>
+</table>
+
+<h2>4 · The 10 ground-truth cases &amp; the fabby score</h2>
+<p>Sample-accurate closed inner loop (discrete PID &times; identified 7000/5000 plants)
+where the <b>true</b> chordal margin is computable at every step. Both methods run the
+identical simulation; the authority each one commands feeds back into its own loop.
+fabby passes 10/10; fable at HEAD passes 8/10.</p>
+<p><b>The fabby score</b> (fabby_score.m) measures the thing that actually matters for
+J4: how well the true margin <em>resulting from the commanded authority</em> tracks the
+best-achievable margin. From the known plant blend &lambda;(t), the ideal is
+b*(t) = max(target, b_true at full authority) — never detune a healthy loop, regulate
+a damaged one exactly onto the target. The signed error e = b_true − b* is averaged
+with the unsafe side (e &lt; 0, less margin than the target demands) weighted
+3&times;, and mapped to a 0–100 score (100 = perfect tracking; 0 = spending the whole
+run 0.10 over-conservative or 0.033 unsafe). Sitting shed while the true margin is
+high above target — the "authority never came back" failure — is exactly what this
+punishes. b* is drawn as the dashed ideal line in the margin panel below.</p>
+<div class="chips">
+  <div class="chip"><b>94.8</b>gpt5_6 mean score (updated 07-10)</div>
+  <div class="chip"><b>90.7</b>fabby mean score</div>
+  <div class="chip"><b>73.2</b>fable mean score</div>
+  <div class="chip"><b>74.8 / 57.9 / 0.0</b>hardest case (4, quiet-band): gpt5 / fabby / fable</div>
+</div>
+<p class="hint">Click a case, wheel to zoom, drag to pan, double-click to reset.</p>
+<div class="tabs" id="tabs"></div>
+<div id="caseview"></div>
+
+<h2>5 · GDBqFpKb replay — following the diagnostic gain</h2>
+<p>
+The record that motivated the redesign: a live run (target was 0.8, up_deadband 0.10)
+where a diagnostic inner-loop gain was stepped 1 &rarr; 1.5 (50.2 s) &rarr; 2 (56.5 s)
+&rarr; 1 (75.5 s). The live law shed to a = 0.2 at 64.4 s and <b>never recovered</b> —
+after the earthquake ends (~78.4 s) its evidence gate blanks the margin to NaN and the
+recovery deadlocks. Below, fabby replays the same logged tap u_osi and dm (open loop:
+its authority cannot affect the logged plant, so once the reading sits below target it
+integrates to the floor — in closed loop it would settle at the b&nbsp;=&nbsp;target
+equilibrium instead, as the suite cases show).
+</p>
+<div class="chips">
+  <div class="chip"><b>+0.28 s</b>shed begins after the 1.5&times; gain step (live: +14.2 s)</div>
+  <div class="chip"><b>76.8 s</b>recovery starts (gain edge at 75.47 s)</div>
+  <div class="chip"><b>80.0 s</b>full authority (live: never)</div>
+  <div class="chip"><b>0 %</b>NaN readings (live b_osi: 87 % NaN)</div>
+</div>
+<div id="gdbview"></div>
+<div class="note"><p><b>Reading the margin panel:</b> before 45 s the tap is idle
+(echo + noise, rms &lt; 0.013 mm) — the evidence weight holds fabby at the healthy
+ceiling where the live indicator showed NaN. During the 2&times;-gain window both
+agree the margin is bad. After the gain returns (75.5 s) and the record goes quiet
+(78.4 s), fabby blends back to the ceiling and sprints home; the live law stays at
+0.2 for the remaining 35 s of the record. The updated gpt5 (violet) is now clean in
+the idle pre-test phase too — its first version false-shed to the floor there until
+it adopted the same weak-drive-blends-to-ceiling device (§2.3).</p>
+<p><b>Why gpt5 drops instantly at the quake (45 s) while fabby takes ~1.5 s — and
+what the hybrid loop does to both.</b> This run is a full hybrid simulation: the
+numerical FEM substructure loop is closed around the inner actuator loop. The
+Speedgoat tap already carries the <em>feedthrough</em> adjustment — prepare_fable_runtime
+computes the full Newmark feedthrough D_fm = 1000&middot;(ifl&middot;K_eff&#8315;&sup1;&middot;f2f
++ iff) = −6.05&times;10&#8315;&#8309; mm/N here, and the tap is u_osi = G_T(dd_fem −
+D_fm&middot;fm) — but that removes only the <em>zero-lag echo</em>. The FEM's dynamic
+response to fm stays wrapped around the loop: per the vHS stability table the coupled
+open loop is L_out = −F_fm&middot;k_mm&middot;G_T&middot;T_inner, and for this exact
+configuration (5k plant, pl_5k lead, fem_sp1_7000, logged k&#770; = 5856 N/mm) it has
+|L_out| &asymp; 0.30 across the 28–44 Hz quiet band and a coupled NCF margin of
+<b>0.401 @ 8.6 Hz</b> at gain 1, vs the inner loop's <b>0.344 @ 38 Hz</b>. So for
+THIS record the inner loop is the binding one, and the governing margin at quake
+onset is &asymp;0.344: gpt5's instant 0.352 lands near the right answer — but less
+cleanly than "handed the answer key": the quiet-band output shape it fits is
+distorted by the wrap factor |1−T&middot;L_out/T| (~&plusmn;30%) that its inner-model-only
+&rho; family cannot represent; it got away with it because the distortion is smooth
+there. fabby is deviation-based — "plant equals the reference" reads as no deviation
+(median 0.646, high by +0.30) until driven-band evidence accumulates. Both
+authorities still shed within 0.4 s of onset (fabby 45.38 s, gpt5 45.12 s). The
+production-relevant warning cuts the other way: on the 7000 configuration the
+COUPLED loop binds (model outer 0.399 @ 38 Hz &lt; inner 0.588 @ 35 Hz, per the
+numerical_ncf_plan analysis) — and that loop is monitored by <em>neither</em>
+estimator, both of which report the inner-loop margin from the tap. The planned
+online fix (b_out = chordal of W&middot;M&#770; with W = −F_fm&middot;k_mm&middot;G_T
+precomputed) applies equally to fabby, gpt5 and fable.</p></div>
+
+<h2>6 · fabby vs gpt5_6 — an honest comparison (updated implementation, 07-10)</h2>
+<p>research/gpt5_6 is an independent redesign of the same problem (gpt_osi + gpt_auth).
+Its first version scored 84.9 (case-4 under-defense, an idle-tap false shed on GDB, a
+fragile warm-up residual baseline). The <b>updated</b> version fixed all three: it
+blends the final reading to the NCF ceiling under weak command activity (the same
+evidence-weight device as fabby §2.3), it scales its guard and deadband with the
+quiet-band evidence weight, and — the biggest idea — it replaced the nonparametric
+residual statistic with a <b>one-parameter model fit</b>: fit a positive loop-gain
+multiplier &rho; to the normalized output-spectrum shape in the quiet band, then read
+the margin of &rho;&middot;a&middot;L&#8320; directly. Everything below is measured on
+the <em>canonical</em> fable_synthetic_suite with identical target 0.55; gpt5's traces
+are the violet lines in §4 and §5.</p>
+<table>
+<tr><th></th><th>fabby</th><th>gpt5_6 (updated)</th></tr>
+<tr><td>canonical suite</td><td>10/10</td><td>10/10</td></tr>
+<tr><td>fabby score</td><td>90.7</td><td><b>94.8</b> — wins 8 of 10 cases; case 4: 74.8 vs 57.9</td></tr>
+<tr><td>margin accuracy (healthy broadband)</td><td>0.013</td><td><b>0.008</b></td></tr>
+<tr><td>case-4 estimate accuracy (healthy lowband)</td><td>0.073 (upper bound by design)</td><td><b>0.001</b> — the &rho;-fit nails it (see caveat below)</td></tr>
+<tr><td>case-4 defense (damaged, true margin min)</td><td>0.475</td><td><b>0.532</b>, with much smoother authority (travel 1.4 vs 3.2)</td></tr>
+<tr><td>quiet-band estimator</td><td>nonparametric pooled growth &rarr; b&#8320;/&radic;g (assumes nothing about the damage shape)</td><td>parametric &rho;-fit onto {&rho;&middot;L&#8320;} (far better-conditioned, but only spans gain-multiplier damage in 28–44 Hz)</td></tr>
+<tr><td>driven-band estimate</td><td>model-free (ridge to zero; L&#8320; used only by the quiet anchor)</td><td>model-blended everywhere (confidence-weighted T-prior at current authority)</td></tr>
+<tr><td>estimator&harr;authority coupling</td><td>none</td><td>a_cmd must be fed back (prior, &rho;-fit and full_margin all scale with it)</td></tr>
+<tr><td>law</td><td>2 states, 3 terms (quadratic shed, creep, certified sprint)</td><td><b>1 state</b>, 1 signed error, evidence-scaled deadband/guard, max_step clamp — simpler</td></tr>
+<tr><td>GDB replay (target 0.55)</td><td>full authority 80.0 s, 0 % NaN</td><td>full authority <b>79.2 s</b>, 0 % NaN, idle phase now clean</td></tr>
+</table>
+<p><b>Why the &rho;-fit wins here — and where it can lose.</b> fabby's quiet-band
+term estimates growth nonparametrically and maps it through b&#8320;/&radic;g — noisy,
+so the law must defend with margin to spare (fabby's case-4 authority breathes; score
+57.9). gpt5 instead assumes the damaged loop lies in the one-parameter family
+&rho;&middot;a&middot;L&#8320; and fits &rho; to the output shape — a far
+better-conditioned estimate (case-4 error 0.001, authority nearly still). The caveat
+is the assumption: this suite's damage (7000&rarr;5000 plant swap) acts near the
+critical band almost exactly like a gain multiplier, so the family contains the truth
+and the fit is essentially exact — the best case the parametrization will ever see.
+Damage that moves a resonance in frequency or adds a new mode (a cracked specimen
+shifting modes, an actuator oil-column change) is <em>outside</em> the family and
+outside its hard-coded 28–44 Hz window; the fit then returns whichever &rho; best
+mimics the shape, with no residual term left to catch what it missed. fabby's
+nonparametric term is strictly weaker on this suite and strictly more general off it.
+The same trade appears in the driven band: gpt5 blends toward the identified model
+everywhere (accurate while the model is right, confidently wrong when the rig drifts
+from it), fabby stays model-free where it has data.</p>
+<p><b>A warning about gpt5_6's own GDB panel</b> (gpt_osi_report.html shows its
+authority flat at 1.0 through the whole record and calls it PASS). That replay is
+<em>shadow-tuned</em>: its target is set to nominal−guard = 0.325 — below the 5k
+plant's healthy margin — so "never shed" becomes the law's correct equilibrium by
+construction, and the diagnostic-gain destabilization can no longer produce a
+deficit the law is asked to act on. Its own results file records the consequences:
+the indicator latencies for both destabilizing gain edges are NaN (the estimator
+never detected either step — during 57–64.4 s, gain 2 at full logged authority,
+the effective inner margin was &asymp;0.05 and it read median 0.352 with a pinned
+at 1.000), transition_pass = 0 and indicator_pass = 0. Those failing metrics are
+excluded from the headline acceptance, which instead reports "finite /
+no-pre-gain-shed / inverse-gain MAE better than the logged run" — criteria an
+inert a&equiv;1 trace passes automatically (the logged fable MAE of 0.627 is
+dominated by its post-event deadlock; in the damaged window gpt5's MAE 0.459 is
+actually WORSE than the broken live run's 0.364). The §5 replay above runs both
+methods at the canonical target 0.55 with no per-record tuning.</p>
+<p><b>Verdict.</b> On this benchmark the updated gpt5_6 is the better implementation:
+higher score (94.8 vs 90.7), smoother authority, faster GDB recovery, and a simpler
+law — and its update is partly convergent evolution (it adopted the evidence-weight
+blend fabby introduced, while its &rho;-fit and max_step clamp are ideas fabby should
+adopt). fabby's remaining advantages are structural rather than measured: no
+model dependence in the driven band, no a_cmd coupling into the estimator, a quiet
+band that watches 28–100 Hz rather than 28–44, and a damage model that assumes
+nothing about how the plant fails. Which one is "better" on the real rig therefore
+hinges on one question: how well does damage on this column stay inside the
+gain-multiplier family of the identified model? The natural v3 is fabby's skeleton
+with gpt5's &rho;-fit added as a second quiet-band reading (min of the two: parametric
+sharpness when the family holds, nonparametric floor when it doesn't) plus the
+max_step clamp.</p>
+
+<h2>7 · Honest limits</h2>
+<p>
+<b>Quiet-band information limit.</b> Below ~1.5–2 dB of sensitivity growth the quiet
+statistic is inside its own noise; the defendable true margin in a lowband-earthquake
+scenario is &asymp; 0.45–0.48 (suite tolerance target−0.15), not the target itself. This is
+physics, not tuning — fable hits the same wall (its case 4 currently regulates <em>worse</em>
+because of the latch regression). <b>Regulation wobble.</b> In sustained quiet-band
+damage, authority breathes between ~0.16 and ~0.64 around its equilibrium (visible in
+case 4) — the price of a 1.25 s estimator driving 2 s reactions; the deadband and the
+envelope keep it off the healthy cases entirely. <b>Verified recovery is 3–7 s
+end-to-end, not 2.</b> The sprint itself moves floor&rarr;full in ~1.3 s, but it fires
+only after the estimator has flushed (~1 s) and the reading has sat clearly above
+target for ~1–2 s (conf). That verification lag is deliberate: recovering into a
+damaged plant on one noisy healthy-looking sample is how hunting starts. When evidence
+is unambiguous (idle tap, silence, GDB post-test) total recovery is ~1.5–2 s.
+<b>Quiet-band recovery rides the creep.</b> With the hazard band command-undriven the
+sprint's certification is void (observability gate), so reclaiming authority after a
+quiet-band shed is proportional-only — visibly slower breathing in case 4. That is the
+correct asymmetry: fast recovery is reserved for situations the model can actually
+verify. <b>Fading drive over damage.</b> When the drive dies while the plant is
+damaged, evidence fades and authority recovers — indistinguishable, by information,
+from a healed plant. fable "solves" this with a 200 s latched ceiling; fabby keeps
+nothing (the GDB deadlock is that latch's failure mode). The protection is speed: if
+excitation returns degraded, the quadratic shed reacts within ~0.3 s.
+</p>
+
+<div class="sub" style="margin-top:36px">
+Files: <span class="mono">fabby_osi.m · fabby_auth.m · fabby_method.m · run_fabby_tests.m
+· make_report_data.m · results/</span> — reproduce with
+<span class="mono">run_fabby_tests()</span> (runs both methods on the suite, replays
+GDBqFpKb, regenerates report_data.js; leaves OSI_tests/fable untouched).
+</div>
+</div>
+
+<div class="ttip" id="ttip"></div>
+<script src="report_data.js"></script>
+<script>
+'use strict';
+function toggleTheme(){
+  const r=document.documentElement;
+  const dark=matchMedia('(prefers-color-scheme: dark)').matches;
+  const cur=r.getAttribute('data-theme')||(dark?'dark':'light');
+  r.setAttribute('data-theme',cur==='dark'?'light':'dark');
+  drawAll();
+}
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const ttip=document.getElementById('ttip');
+
+/* ---------- minimal linked-panel chart engine (SVG, zoom/pan) ---------- */
+function Chart(host,panels,x0,x1,events){
+  // panels: [{h, ylab, ylim, series:[{t,y,color,name,dash,width,stairs}], band:{t,lo,hi,name}}]
+  const W=1000, padL=52, padR=14;
+  const view={x0,x1};
+  const svgs=[];
+  panels.forEach(p=>{
+    const H=p.h;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+    svg.style.cursor='crosshair';
+    host.appendChild(svg);
+    svgs.push({svg,p,H});
+  });
+  function xpix(t){return padL+(t-view.x0)/(view.x1-view.x0)*(W-padL-padR)}
+  function draw(){
+    svgs.forEach(({svg,p,H})=>{
+      const padT=8,padB=(p===panels[panels.length-1].ref?26:18);
+      const yl=p.ylim;
+      const ypix=v=>padT+(yl[1]-v)/(yl[1]-yl[0])*(H-padT-18);
+      let s='';
+      // grid + y ticks
+      const yt=p.yticks||niceTicks(yl[0],yl[1],4);
+      yt.forEach(v=>{
+        const y=ypix(v);
+        s+=`<line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="${css('--grid')}" stroke-width="1"/>`;
+        s+=`<text x="${padL-7}" y="${y+4}" text-anchor="end" font-size="11" fill="${css('--muted')}">${fmt(v)}</text>`;
+      });
+      // x ticks
+      niceTicks(view.x0,view.x1,7).forEach(v=>{
+        if(v<view.x0||v>view.x1)return;
+        const x=xpix(v);
+        s+=`<line x1="${x}" x2="${x}" y1="${H-18}" y2="${H-14}" stroke="${css('--axis')}"/>`;
+        s+=`<text x="${x}" y="${H-3}" text-anchor="middle" font-size="11" fill="${css('--muted')}">${fmt(v)}</text>`;
+      });
+      s+=`<line x1="${padL}" x2="${W-padR}" y1="${H-18}" y2="${H-18}" stroke="${css('--axis')}"/>`;
+      // events
+      (events||[]).forEach(ev=>{
+        if(ev.t<view.x0||ev.t>view.x1)return;
+        const x=xpix(ev.t);
+        s+=`<line x1="${x}" x2="${x}" y1="${padT}" y2="${H-18}" stroke="${css('--red')}" stroke-dasharray="3 4" stroke-width="1" opacity=".6"/>`;
+        if(p.evlab) s+=`<text x="${x+3}" y="${padT+10}" font-size="10.5" fill="${css('--red')}" opacity=".85">${ev.n}</text>`;
+      });
+      // band
+      if(p.band){
+        let up='',dn='';
+        const b=p.band;
+        for(let i=0;i<b.t.length;i++){
+          if(b.t[i]<view.x0-2||b.t[i]>view.x1+2)continue;
+          up+=(up?'L':'M')+xpix(b.t[i]).toFixed(1)+' '+ypix(clamp(b.hi[i],yl)).toFixed(1)+' ';
+          dn=('L'+xpix(b.t[i]).toFixed(1)+' '+ypix(clamp(b.lo[i],yl)).toFixed(1)+' ')+dn;
+        }
+        if(up)s+=`<path d="${up}${dn.replace('L','L')}Z" fill="${css('--band')}" stroke="none"/>`;
+      }
+      // series
+      p.series.forEach(sr=>{
+        const col=css(sr.color);
+        let d='',pen=false;
+        for(let i=0;i<sr.t.length;i++){
+          const tv=sr.t[i],yv=sr.y[i];
+          if(tv<view.x0-1||tv>view.x1+1){pen=false;continue}
+          if(yv==null||!isFinite(yv)){pen=false;continue}
+          const x=xpix(tv).toFixed(1),y=ypix(clamp(yv,yl)).toFixed(1);
+          d+=(pen?'L':'M')+x+' '+y+' ';
+          pen=true;
+        }
+        if(d)s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${sr.width||2}" ${sr.dash?`stroke-dasharray="${sr.dash}"`:''} stroke-linejoin="round"/>`;
+      });
+      // y label
+      s+=`<text x="4" y="${padT+11}" font-size="11.5" fill="${css('--ink2')}">${p.ylab}</text>`;
+      s+=`<line class="xh" x1="-9" x2="-9" y1="${padT}" y2="${H-18}" stroke="${css('--muted')}" stroke-width="1" opacity=".8"/>`;
+      svg.innerHTML=s;
+    });
+  }
+  function clamp(v,yl){return Math.max(yl[0],Math.min(yl[1],v))}
+  // interactions
+  let drag=null;
+  svgs.forEach(({svg,p,H})=>{
+    svg.addEventListener('wheel',e=>{
+      e.preventDefault();
+      const r=svg.getBoundingClientRect();
+      const fx=(e.clientX-r.left)/r.width*W;
+      const t=view.x0+(fx-padL)/(W-padL-padR)*(view.x1-view.x0);
+      const f=e.deltaY>0?1.25:0.8;
+      let nx0=t-(t-view.x0)*f, nx1=t+(view.x1-t)*f;
+      nx0=Math.max(x0,nx0);nx1=Math.min(x1,nx1);
+      if(nx1-nx0>0.5){view.x0=nx0;view.x1=nx1;draw()}
+    },{passive:false});
+    svg.addEventListener('pointerdown',e=>{drag={x:e.clientX,v0:view.x0,v1:view.x1};svg.setPointerCapture(e.pointerId)});
+    svg.addEventListener('pointerup',()=>drag=null);
+    svg.addEventListener('dblclick',()=>{view.x0=x0;view.x1=x1;draw()});
+    svg.addEventListener('pointermove',e=>{
+      const r=svg.getBoundingClientRect();
+      if(drag&&e.buttons){
+        const dt=-(e.clientX-drag.x)/r.width*W/(W-padL-padR)*(drag.v1-drag.v0);
+        let nx0=drag.v0+dt,nx1=drag.v1+dt;
+        if(nx0<x0){nx1+=x0-nx0;nx0=x0} if(nx1>x1){nx0-=nx1-x1;nx1=x1}
+        view.x0=nx0;view.x1=nx1;draw();ttip.style.display='none';return;
+      }
+      const fx=(e.clientX-r.left)/r.width*W;
+      const t=view.x0+(fx-padL)/(W-padL-padR)*(view.x1-view.x0);
+      if(t<view.x0||t>view.x1){hideTT();return}
+      svgs.forEach(({svg:s2})=>{
+        const xh=s2.querySelector('.xh');
+        if(xh){xh.setAttribute('x1',xpix(t));xh.setAttribute('x2',xpix(t))}
+      });
+      showTT(e,t);
+    });
+    svg.addEventListener('pointerleave',hideTT);
+  });
+  function hideTT(){ttip.style.display='none';
+    svgs.forEach(({svg})=>{const xh=svg.querySelector('.xh');if(xh){xh.setAttribute('x1',-9);xh.setAttribute('x2',-9)}})}
+  function showTT(e,t){
+    ttip.innerHTML='';
+    const tt=document.createElement('div');tt.className='tt-t';
+    tt.textContent='t = '+t.toFixed(2)+' s';ttip.appendChild(tt);
+    panels.forEach(p=>p.series.forEach(sr=>{
+      const i=nearest(sr.t,t);
+      if(i<0)return;
+      const row=document.createElement('div');row.className='row';
+      const key=document.createElement('i');key.style.borderTopColor=css(sr.color);
+      if(sr.dash)key.style.borderTopStyle='dashed';
+      const nm=document.createElement('span');nm.textContent=sr.name;
+      const val=document.createElement('b');
+      const v=sr.y[i];val.textContent=(v==null||!isFinite(v))?'—':(+v).toFixed(3);
+      row.append(key,nm,val);ttip.appendChild(row);
+    }));
+    ttip.style.display='block';
+    const tw=ttip.offsetWidth,th=ttip.offsetHeight;
+    let lx=e.clientX+16,ly=e.clientY+12;
+    if(lx+tw>innerWidth-8)lx=e.clientX-tw-14;
+    if(ly+th>innerHeight-8)ly=e.clientY-th-10;
+    ttip.style.left=lx+'px';ttip.style.top=ly+'px';
+  }
+  draw();
+  return {draw};
+}
+function nearest(ts,t){
+  if(!ts.length)return -1;
+  let lo=0,hi=ts.length-1;
+  if(t<ts[0]-1||t>ts[hi]+1)return -1;
+  while(hi-lo>1){const m=(hi+lo)>>1;(ts[m]<t)?lo=m:hi=m}
+  return (t-ts[lo]<ts[hi]-t)?lo:hi;
+}
+function niceTicks(a,b,n){
+  const span=b-a,step0=span/n,mag=Math.pow(10,Math.floor(Math.log10(step0)));
+  const step=[1,2,2.5,5,10].map(m=>m*mag).find(s=>span/s<=n+1)||mag*10;
+  const t=[];for(let v=Math.ceil(a/step)*step;v<=b+1e-9;v+=step)t.push(+v.toFixed(6));
+  return t;
+}
+const fmt=v=>Math.abs(v)>=100?v.toFixed(0):(Math.abs(v)>=10?+v.toFixed(1)+'':+v.toFixed(2)+'');
+
+/* ------------------------------ suite view ------------------------------ */
+const EVENTS={
+  damage_step_broadband:[{t:45,n:'damage'}],
+  damage_step_lowband:[{t:50,n:'damage'}],
+  intensity_step:[{t:50,n:'input ×5'}],
+  gradual_softening:[{t:60,n:'ramp start'},{t:100,n:'ramp end'}],
+  damage_then_repair:[{t:50,n:'damage'},{t:100,n:'repair'}],
+  starts_damaged_improves:[{t:80,n:'heals'}],
+  regime_change_healthy:[{t:70,n:'band switch'}],
+  transient_pulse:[{t:45,n:'pulse'}]
+};
+let curCase=2, charts=[];
+const tabs=document.getElementById('tabs');
+REPORT.cases.forEach((c,i)=>{
+  const b=document.createElement('button');b.className='tab';
+  b.innerHTML=`${i+1}. ${c.name.replace(/_/g,' ')}<span class="pf">`+
+    `<span class="${c.pass_fabby?'p':'f'}">fabby ${c.pass_fabby?'PASS':'FAIL'}</span> · `+
+    `<span class="${c.pass_gpt?'p':'f'}">gpt5 ${c.pass_gpt?'PASS':'FAIL'}</span> · `+
+    `<span class="${c.pass_fable?'p':'f'}">fable ${c.pass_fable?'PASS':'FAIL'}</span></span>`+
+    `<span class="pf">score ${c.score_fabby.toFixed(1)} · ${c.score_gpt.toFixed(1)} · ${c.score_fable.toFixed(1)}</span>`;
+  b.onclick=()=>{curCase=i;renderCase();};
+  tabs.appendChild(b);
+});
+function renderCase(){
+  [...tabs.children].forEach((b,i)=>b.classList.toggle('on',i===curCase));
+  const c=REPORT.cases[curCase];
+  const host=document.getElementById('caseview');
+  host.innerHTML='';
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<h4>${curCase+1} · ${c.name.replace(/_/g,' ')}</h4>
+  <div class="cs">closed-loop ground truth · target ${REPORT.target} ·
+    fabby score <b>${c.score_fabby.toFixed(1)}</b> · gpt5 ${c.score_gpt.toFixed(1)} · fable ${c.score_fable.toFixed(1)}</div>
+  <div class="legend">
+    <span><i class="band"></i>dm envelope</span>
+    <span><i style="border-color:var(--ink)"></i>true margin</span>
+    <span><i class="dash" style="border-color:var(--aqua)"></i>ideal b*</span>
+    <span><i style="border-color:var(--blue)"></i>fabby</span>
+    <span><i style="border-color:var(--violet)"></i>gpt5_6</span>
+    <span><i style="border-color:var(--yellow)"></i>fable</span>
+    <span><i class="dash" style="border-color:var(--muted)"></i>target</span>
+  </div>
+  <div class="charts"></div>
+  <div class="detail">${badge(c.detail_fabby,'fabby')}\n${badge(c.detail_gpt,'gpt5 ')}\n${badge(c.detail_fable,'fable')}</div>`;
+  host.appendChild(card);
+  const cv=card.querySelector('.charts');
+  const t0=c.tc[0],t1=c.tc[c.tc.length-1];
+  const tgt={t:[t0,t1],y:[REPORT.target,REPORT.target],color:'--muted',name:'target',dash:'5 5',width:1.4};
+  charts=[Chart(cv,[
+    {h:120,ylab:'dm (mm)',ylim:dmLim(c),series:[],band:{t:c.dm_t,lo:c.dm_lo,hi:c.dm_hi},evlab:true},
+    {h:210,ylab:'NCF margin',ylim:[0,0.75],yticks:[0,0.2,0.4,0.55,0.707],series:[
+      tgt,
+      {t:c.tc,y:c.b_star,color:'--aqua',name:'ideal b*',dash:'6 4',width:1.6},
+      {t:c.tc,y:c.b_true,color:'--ink',name:'true margin',width:2.4},
+      {t:c.tc,y:c.b_fabby,color:'--blue',name:'fabby b'},
+      {t:c.tc,y:c.b_gpt,color:'--violet',name:'gpt5 b',width:1.4},
+      {t:c.tc,y:c.b_fable,color:'--yellow',name:'fable b',width:1.4}]},
+    {h:170,ylab:'authority a',ylim:[0,1.05],series:[
+      {t:c.tc,y:c.a_fabby,color:'--blue',name:'fabby a',width:2.4},
+      {t:c.tc,y:c.a_gpt,color:'--violet',name:'gpt5 a',width:1.6},
+      {t:c.tc,y:c.a_fable,color:'--yellow',name:'fable a',width:1.4}]}
+  ],t0,t1,EVENTS[c.name]||[])];
+}
+function dmLim(c){
+  let m=0;c.dm_hi.forEach(v=>{if(isFinite(v)&&Math.abs(v)>m)m=Math.abs(v)});
+  c.dm_lo.forEach(v=>{if(isFinite(v)&&Math.abs(v)>m)m=Math.abs(v)});
+  return [-m*1.05,m*1.05];
+}
+function badge(d,who){
+  return who+':  '+d.replace(/\[ok\]/g,'<span class="ok">[ok]</span>')
+                   .replace(/\[FAIL\]/g,'<span class="fail">[FAIL]</span>');
+}
+
+/* ------------------------------- GDB view ------------------------------- */
+function renderGDB(){
+  const g=REPORT.gdb;
+  const host=document.getElementById('gdbview');
+  host.innerHTML='';
+  const card=document.createElement('div');card.className='card';
+  card.innerHTML=`<h4>GDBqFpKb — logged tap replay</h4>
+  <div class="cs">el-centro at 45 s · diagnostic gain steps marked red · live target was 0.8, fabby replay target 0.55</div>
+  <div class="legend">
+    <span><i class="band"></i>u_osi envelope</span>
+    <span><i style="border-color:var(--ink)"></i>diag gain</span>
+    <span><i style="border-color:var(--blue)"></i>fabby</span>
+    <span><i style="border-color:var(--violet)"></i>gpt5_6</span>
+    <span><i style="border-color:var(--yellow)"></i>live fable (logged)</span>
+    <span><i class="dash" style="border-color:var(--muted)"></i>target 0.55</span>
+  </div>
+  <div class="charts"></div>`;
+  host.appendChild(card);
+  const cv=card.querySelector('.charts');
+  const t0=0,t1=g.tc[g.tc.length-1];
+  const ev=[{t:50.224,n:'gain 1.5'},{t:56.521,n:'gain 2'},{t:75.469,n:'gain 1'},{t:78.4,n:'quake ends'}];
+  Chart(cv,[
+    {h:120,ylab:'u_osi (mm) + diag gain',ylim:[-1.1,2.3],yticks:[-1,0,1,2],series:[
+      {t:g.tc,y:g.diag_gain,color:'--ink',name:'diag gain',width:1.6}],
+      band:{t:g.u_t,lo:g.u_lo,hi:g.u_hi},evlab:true},
+    {h:210,ylab:'NCF margin',ylim:[0,0.75],yticks:[0,0.2,0.4,0.55,0.707],series:[
+      {t:[t0,t1],y:[0.55,0.55],color:'--muted',name:'target',dash:'5 5',width:1.4},
+      {t:g.tc,y:g.b,color:'--blue',name:'fabby b',width:2.2},
+      {t:g.tc,y:g.b_gpt,color:'--violet',name:'gpt5 b',width:1.4},
+      {t:g.tc,y:g.b_logged,color:'--yellow',name:'live b_osi (NaN gaps)',width:1.4}]},
+    {h:170,ylab:'authority a',ylim:[0,1.05],series:[
+      {t:g.tc,y:g.a,color:'--blue',name:'fabby a',width:2.4},
+      {t:g.tc,y:g.a_gpt,color:'--violet',name:'gpt5 a',width:1.6},
+      {t:g.tc,y:g.auth_logged,color:'--yellow',name:'live authority',width:1.4}]}
+  ],t0,t1,ev);
+}
+
+function drawAll(){renderCase();renderGDB();}
+drawAll();
+</script>
+</body>
+</html>
