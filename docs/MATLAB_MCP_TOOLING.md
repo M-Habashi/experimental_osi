@@ -20,7 +20,7 @@ Load this file only when the task involves MATLAB, Simulink, Speedgoat/SLRT, SAP
 - Store all temporary verification/test artifacts under repo-level `.codex`, for example `.codex\verification\<task_name>\`. This includes baseline/after MAT files, plots, and comparison metrics. If the MATLAB workflow first writes a verification MAT file under `saved_results`, copy/move the needed evidence into `.codex\verification\<task_name>\` and remove duplicate temporary verification files from the step folder.
 - If the user asks to verify/vrify, treat that as explicit permission to run the physical Speedgoat workflow. It is considered safe and does not need an additional confirmation prompt.
 - Output verification procedure:
-  1. Work in `C:\Users\BOWN1111PC1\Documents\Mohamed\ColumnSetup_gaurav\main`.
+  1. Work in `C:\Users\BOWN1111PC1\Documents\Mohamed\experimental_osi\main`.
   2. In MATLAB, run `dbstop in main_ColumnSetup at 201`, then run `main_ColumnSetup.m`.
   3. Wait until MATLAB stops at line 201 (`pause`). At this point offsets are read, `model_ColumnSetup_00` is open, and the main script is waiting for the target run.
   4. Run the physical Speedgoat target from MATLAB:
@@ -40,7 +40,7 @@ Load this file only when the task involves MATLAB, Simulink, Speedgoat/SLRT, SAP
   5. Confirm `savedfile_flag` exists. The saved MAT file path is in `file_name`.
   6. Run the visualization on the exact saved file:
      ```matlab
-     projectFolder = 'C:\Users\BOWN1111PC1\Documents\Mohamed\ColumnSetup_gaurav\main';
+     projectFolder = 'C:\Users\BOWN1111PC1\Documents\Mohamed\experimental_osi\main';
      cd(projectFolder)
      outputVerificationFile = fullfile(projectFolder, file_name);
      run(fullfile(projectFolder, 'results_analysis', 'visualize_saved_results.m'))
@@ -108,7 +108,7 @@ Load this file only when the task involves MATLAB, Simulink, Speedgoat/SLRT, SAP
 - Each `functions.exec` call uses a fresh JavaScript isolate, so variables defined in one call are unavailable in the next and will fail with `ReferenceError`. Recreate any needed values within the same call or persist serializable data explicitly with `store` and `load`.
 - For repository recovery checks, `git fsck --full --no-reflogs --unreachable` can exceed the default command window on this repository. Run it once with a bounded timeout of up to 60 seconds; if it still times out, do not retry repeatedly and continue with Git history and backup recovery sources.
 - When inspecting many unreachable Git blobs with `git cat-file --batch`, do not write every hash to redirected standard input before consuming standard output; the pipe can deadlock and fail with `unable to stream <hash> to stdout`. Send one hash, flush it, and fully read that object's header and bytes before sending the next hash.
-- When a PowerShell command runs from the `ColumnSetup_gaurav` repository root, address every project file as `main\...`; do not omit `main\` or prefix it with `ColumnSetup_gaurav\main\...`, because either form causes path-not-found errors. Prefer separate commands: run repository Git checks from the root, then run project-file reads from `main`, so mixed Git/read commands cannot accidentally use root-relative paths without `main\`.
+- When a PowerShell command runs from the `experimental_osi` repository root, address every project file as `main\...`; do not omit `main\` or prefix it with `experimental_osi\main\...`, because either form causes path-not-found errors. Prefer separate commands: run repository Git checks from the root, then run project-file reads from `main`, so mixed Git/read commands cannot accidentally use root-relative paths without `main\`.
 - Before applying one multi-file patch after moving MATLAB scripts, read the exact headers at their destination paths. If one expected context differs, split the edit into file-specific patches so one mismatch does not reject the full patch.
 - Before adding a MATLAB helper directory to a relocated script, resolve the current helper path on disk. If MATLAB warns that the directory is nonexistent and then cannot find the helper, correct the path from the filesystem inventory before rerunning the script.
 - Never call `restoredefaultpath` in a MATLAB MCP session; it removes the temporary `matlab_mcp` package path and causes later tools to fail with `Undefined function 'matlab_mcp.mcpEval'`. If that error occurs, identify and close only the broken MCP-launched MATLAB process pair, keep any older user session, and let the next MATLAB tool call establish a clean MCP session. Do not start a separate unmanaged MATLAB window.

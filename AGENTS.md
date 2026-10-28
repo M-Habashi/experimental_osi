@@ -6,10 +6,10 @@
 
 ## Working Scope
 
-- Work inside `C:\Users\Victus\Desktop\folder_working\a purdue\aa reasearch\Gaurav Setup\ColumnSetup_gaurav\main` unless the task explicitly requires the repository root.
+- Work inside `C:\Users\BOWN1111PC1\Documents\Mohamed\experimental_osi\main` unless the task explicitly requires the repository root.
 - Ask the user before running commands outside `main`. Git operations and reading/updating repository-level instruction files are allowed from the repository root without asking.
 - Treat `master` as the main branch for this repository.
-- When running repository-level Git checks such as `git diff --check`, run them from the `ColumnSetup_gaurav` repository root.
+- When running repository-level Git checks such as `git diff --check`, run them from the `experimental_osi` repository root.
 - When a PowerShell command runs from the repository root, address project files as `main\...`.
 
 ## Always-On Project Rules

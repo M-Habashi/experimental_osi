@@ -22,7 +22,7 @@ end
 clearvars -except fableSmokeStopTime fableSmokeTag ...
     fableSmokeEnableInitial
 
-projectFolder = 'C:\Users\BOWN1111PC1\Documents\Mohamed\ColumnSetup_gaurav\main';
+projectFolder = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 repoFolder = fileparts(projectFolder);
 verificationFolder = fullfile(repoFolder, '.codex', 'verification', ...
     'fable_speedgoat');
