@@ -26,6 +26,13 @@
 - Saved test MAT files should store one top-level `result` struct. To convert old top-level-variable test result files, run `convert_saved_result_to_struct` from `main`; it scans `saved_results/tests/**/*.mat` and rewrites old files in the new struct format.
 - MATLAB utilities under `main\helpers\utils` need three `fileparts` calls from `mfilename('fullpath')` to resolve the `main` project folder.
 
+## Old / Yellow Project Results
+
+- "Old project" and "yellow project" refer to `C:\Users\BOWN1111PC1\Documents\Mohamed\ColumnSetup_gaurav` (yellow/orange folder logo), not `ColumnSetup_gaurav - Copy`.
+- Original recordings are under its `main\saved_results\tests`; specimen/FEM metadata are in `main\saved_results\specimens` and `main\saved_results\fem`. Use these historical results for analysis without modifying the originals.
+- The published viewer is https://rths-viewer.vercel.app/. Its `data/test-manifest.json` and `data/report-metadata.json` map exported data and display names. Local website source files were not found in the searched sibling projects; the original MAT recordings were found.
+- Viewer SP2 mapping to old-project raw files: `sp2_test1` = `20260731\sp2_RTHS_linear_10x.mat`; `sp2_test2` = `20260801\SP2_HS.mat`; `sp2_test3`, `sp2_test4`, `sp2_test5` = `20260826\20260826_1601_testing_OSI.mat`, `20260826\20260826_1652_testing_OSI.mat`, `20260826\20260826_1732_testing_OSI.mat`, respectively. Paths are relative to the old project's `main\saved_results\tests`. Viewer folder names (`sp2_or`, `sp2_retrofitted`) differ from these raw-file folders.
+
 ## RTHS Plot Notation
 
 - `dm`: measured actuator displacement response from the experiment at the interface/control point, approximately the zero-moment point around mid-column.
