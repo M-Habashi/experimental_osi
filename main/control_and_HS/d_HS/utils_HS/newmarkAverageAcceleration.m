@@ -1,6 +1,7 @@
-function u = newmarkAverageAcceleration(time, M, C, K, force)
+function [u, v, a] = newmarkAverageAcceleration(time, M, C, K, force)
 %NEWMARKAVERAGEACCELERATION Integrate M*u'' + C*u' + K*u = force.
 % Units: time [s], force [N], u uses the units implied by M/C/K.
+% Optional v and a are relative velocity and acceleration on the same grid.
 
 n_step = numel(time);
 n_dof = size(M, 1);

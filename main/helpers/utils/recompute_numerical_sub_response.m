@@ -6,6 +6,7 @@ project_folder = fileparts(fileparts(fileparts(mfilename('fullpath'))));
 addpath(fullfile(project_folder, 'control_and_HS', 'd_HS', 'utils_HS'));
 addpath(fullfile(project_folder, 'control_and_HS', 'c_fem_modeling', ...
     'utils_fem'));
+addpath(fullfile(project_folder, 'results_analysis'));
 
 if isfield(result, 'result') && isstruct(result.result)
     result = result.result;
@@ -81,12 +82,22 @@ state = [];
 x_n = zeros(n, hs.n_floor);
 d_n = zeros(n, 1);
 effective_time = zeros(n, 1);
+nonlinear = is_hs_nonlinear(hs);
+if nonlinear
+    cfg = prepare_hs_nonlinear(hs, dt, 'num');
+end
+ok = true;
 for step = 2:n
-    [d_n(step), state] = step_HS(fm(step), pause_enable(step), ...
-        dt, hs, state);
+    if nonlinear
+        [d_n(step), state, ok] = step_HS_nonlinear(fm(step), ...
+            pause_enable(step), cfg, state);
+    else
+        [d_n(step), state] = step_HS(fm(step), pause_enable(step), ...
+            dt, hs, state);
+    end
     x_n(step, :) = state(1:hs.n_floor)';
     effective_time(step) = effective_time(step - 1);
-    if pause_enable(step) == 0
+    if pause_enable(step) == 0 && ok % failure holds freeze the clock
         effective_time(step) = effective_time(step) + dt;
     end
 end

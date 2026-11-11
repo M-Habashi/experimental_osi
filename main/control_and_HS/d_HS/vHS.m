@@ -7,7 +7,8 @@
 clearvars -except outputVerificationFile fem_file_override ...
     specimen_file_override exp_specimen_file_override ...
     h_dc_dm_model_file_override pid_gain_override ...
-    phase_lead_file_override PID_scale; ...
+    phase_lead_file_override PID_scale structural_model_override ...
+    intensity_factor_override time_scale_factor_override vhs_plot_override; ...
     clc; close all;
 
 script_dir = fileparts(mfilename('fullpath'));
@@ -26,13 +27,25 @@ addpath(fullfile(project_root, 'control_and_HS', 'b_system_id', ...
 % 'tohoku'.
 hs = struct( ...
     'earthquake_type', 'el_centro', ...
-    'intensity_factor', 4, ...
+    'intensity_factor', 3.5, ...
     'time_scale_factor', 20, ...
-    'force_sign', 1.0);
+    'force_sign', 1.0, ...
+    'structural_model', 'bilinear_hinges'); % 'linear' or 'bilinear_hinges'
+if exist('structural_model_override', 'var') && ~isempty(structural_model_override)
+    hs.structural_model = structural_model_override;
+end
+if exist('intensity_factor_override', 'var') && ~isempty(intensity_factor_override)
+    hs.intensity_factor = intensity_factor_override;
+end
+if exist('time_scale_factor_override', 'var') && ~isempty(time_scale_factor_override)
+    hs.time_scale_factor = time_scale_factor_override;
+end
+plot_enabled = ~exist('vhs_plot_override', 'var') || vhs_plot_override;
 PID_scale = 1;
 validateattributes(PID_scale, {'numeric'}, ...
     {'scalar', 'real', 'finite'}, mfilename, 'PID_scale');
 k_exp_r =1;
+plot_partition = false; % Optional static frame/partition geometry figure.
 hs_sample_dt = 1/2048;
 if exist('exp_specimen_file_override', 'var') ...
         && ~isempty(exp_specimen_file_override)
@@ -154,11 +167,21 @@ hs_model_time = hs_real_time/hs.time_scale_factor;
 ag_sample = interp1(model_time, ag, hs_model_time, 'linear', 0);
 
 %% REFERENCE RESPONSE
-reference_load_sample = -(fem_ref.M*fem_ref.influence)*ag_sample';
-u_reference_sample = newmarkAverageAcceleration(hs_real_time, ...
-    fem_ref.M, hs.C, fem_ref.K, reference_load_sample);
-u_control_reference_sample = referenceControlDisplacement( ...
-    fem_ref, u_reference_sample);
+nonlinear = is_hs_nonlinear(hs);
+nl_num = [];
+if nonlinear
+    nl_num = prepare_hs_nonlinear(hs, hs_sample_dt, 'num');
+    [u_reference_sample, u_control_reference_sample, ~, a_reference_sample, hinges_reference] = replay_hs_nonlinear( ...
+        prepare_hs_nonlinear(hs, hs_sample_dt, 'ref'), zeros(size(hs_real_time)));
+    u_control_reference_sample = u_control_reference_sample/1000;
+else
+    reference_load_sample = -(fem_ref.M*fem_ref.influence)*ag_sample';
+    [u_reference_sample, ~, a_reference_sample] = newmarkAverageAcceleration(hs_real_time, ...
+        fem_ref.M, hs.C, fem_ref.K, reference_load_sample);
+    u_control_reference_sample = referenceControlDisplacement( ...
+        fem_ref, u_reference_sample);
+    hinges_reference = elastic_hs_hinges(fem_ref, false, u_reference_sample, [], hs_model_time);
+end
 
 %% VIRTUAL SPRING-FEEDBACK REFERENCE
 K_coupled = fem_num.K;
@@ -179,25 +202,49 @@ u_hybrid_reference_sample = newmarkAverageAcceleration(hs_real_time, ...
 interface_displacement_reference_sample = ...
     (interface_from_floors*u_hybrid_reference_sample')';
 measured_force_sample = k_experimental*interface_displacement_reference_sample;
+if nonlinear
+    % Nonlinear spring check: numerical FEM + elastic k_experimental spring.
+    [u_hybrid_reference_sample, interface_displacement_reference_sample] = ...
+        replay_hs_nonlinear(prepare_hs_nonlinear(hs, hs_sample_dt, 'num', ...
+        k_experimental), zeros(size(hs_real_time)));
+    interface_displacement_reference_sample = ...
+        interface_displacement_reference_sample/1000;
+    measured_force_sample = k_experimental ...
+        *interface_displacement_reference_sample/hs.force_sign;
+end
 
 state = [];
 u_num_floors_sample = zeros(numel(hs_real_time), n_story);
+a_num_floors_sample = zeros(numel(hs_real_time), n_story);
 interface_displacement_sample = zeros(numel(hs_real_time), 1);
 experimental_force_sample = zeros(numel(hs_real_time), 1);
 dd_hs_sample = zeros(numel(hs_real_time), 1);
+nd = n_story;
+if nonlinear, nd = size(nl_num.K, 1); end
 
 for step = 2:numel(hs_real_time)
     fm = measured_force_sample(step);
-    [dd_hs_sample(step), state] = step_HS(fm, 0, hs_sample_dt, hs, state);
+    if nonlinear
+        [dd_hs_sample(step), state] = step_HS_nonlinear(fm, 0, nl_num, state);
+    else
+        [dd_hs_sample(step), state] = step_HS(fm, 0, hs_sample_dt, hs, state);
+    end
     u_num_floors_sample(step, :) = state(1:n_story)';
+    a_num_floors_sample(step, :) = state(2*nd+(1:n_story))';
     interface_displacement_sample(step) = dd_hs_sample(step)/1000;
     experimental_force_sample(step) = fm;
 end
 [u_pid_floors_sample, dd_pid_sample, dd_lead_pid_sample, dm_pid_sample, ...
     dc_pid_sample, experimental_force_pid_sample, ...
-    pid_cl_stability] = ...
+    pid_cl_stability, a_pid_floors_sample, hinges_control] = ...
     hybridResponseWithPidHdcDm(hs, PID_H_dc_dm, pid_h_dc_dm_values, ...
-    k_experimental, hs_sample_dt, phase_lead_tf_discrete);
+    k_experimental, hs_sample_dt, phase_lead_tf_discrete, nl_num);
+base_shear_reference = hs_base_shear(fem_ref.M, fem_ref.influence, ...
+    a_reference_sample, ag_sample);
+base_shear_ideal = hs_base_shear(hs.M, fem_num.influence(floor_dofs), ...
+    a_num_floors_sample, ag_sample);
+base_shear_pid = hs_base_shear(hs.M, fem_num.influence(floor_dofs), ...
+    a_pid_floors_sample, ag_sample);
 
 u_num_floors = interp1(hs_real_time, u_num_floors_sample, real_time, ...
     'linear');
@@ -340,8 +387,10 @@ fprintf('Control path: %s\n', control_path_label);
 disp(validation_metric_table)
 
 %% RESPONSE COMPARISON
-figure('Color', 'w', 'Name', 'Reference and HS comparison');
-layout = tiledlayout(n_story, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+if plot_enabled
+figure('Color', 'w', 'Name', 'Reference and HS comparison', ...
+    'Position', [80 50 1100 850]);
+layout = tiledlayout(n_story+1, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
 for floor_id = 1:n_story
     ax = nexttile;
     plot(ax, real_time, u_reference(:, floor_id), '--', ...
@@ -359,6 +408,17 @@ for floor_id = 1:n_story
     ylabel(ax, sprintf('Floor %d (m)', floor_id));
     makeLegendToggle(ax);
 end
+ax = nexttile;
+plot(ax, hs_real_time, base_shear_reference/1000, '--', ...
+    'Color', colors.purple, 'LineWidth', 2.2, 'DisplayName', 'Full FEM');
+hold(ax, 'on');
+plot(ax, hs_real_time, base_shear_ideal/1000, ':', ...
+    'Color', colors.green, 'LineWidth', 1.1, 'DisplayName', 'Ideal spring HS');
+plot(ax, hs_real_time, base_shear_pid/1000, '-', ...
+    'Color', colors.purple, 'LineWidth', 1.1, 'DisplayName', 'vHS control path');
+hold(ax, 'off'); grid(ax, 'on');
+ylabel(ax, 'Base shear (kN)');
+makeLegendToggle(ax);
 xlabel(ax, 'Real time (s)');
 title(layout, sprintf('%s: reference and Hybrid Simulation response', ...
     hs.earthquake_type));
@@ -366,6 +426,12 @@ subtitle(layout, sprintf(['Max floor error: num*exp = %.3e m, ' ...
     'num*PID*H_{dc,dm}*exp = %.3e m'], reference_error, ...
     reference_error_pid));
 linkaxes(findall(gcf, 'Type', 'axes'), 'x');
+
+%% ROOF DISPLACEMENT VS TOTAL BASE SHEAR
+plot_hs_roof_hysteresis( ...
+    [u_reference_sample(:, end), u_pid_floors_sample(:, end), u_num_floors_sample(:, end)], ...
+    [base_shear_reference, base_shear_pid, base_shear_ideal], ...
+    {'Full FEM', 'vHS control path', 'Ideal spring HS'});
 
 %% CONTROL CHECK
 figure('Color', 'w', 'Name', 'PID_H_dc_dm control check');
@@ -412,8 +478,10 @@ fft_test_duration_s = hs.time(end)*hs.time_scale_factor;
 plot_hs_response_frequency_content(hs, u_num_floors_sample, ...
     unit_scale_u_num_floors_sample, fft_fs_hz, fft_fmax_hz, ...
     fft_test_duration_s, ag_sample);
+plot_hs_plastic_hinges(hs, hinges_control, hinges_reference);
 
 %% PARTITION GEOMETRY
+if plot_partition
 frame_x = (0:frame.n_bay)*frame.bay_width;
 frame_y = (0:frame.n_story)*frame.story_height;
 interface_y = fem_num.interface.height;
@@ -457,6 +525,8 @@ axis equal; axis off;
 xlim([-0.45*frame.bay_width, frame_x(end)+0.45*frame.bay_width]);
 ylim([-0.25*frame.story_height, frame_y(end)+0.35*frame.story_height]);
 hold off;
+end
+end
 
 %% STABILITY TABLE
 hybrid_margin_frequency_hz = [0.1, 80];
@@ -477,6 +547,17 @@ fprintf('PID values used (%s): P = %.6g, I = %.6g, D = %.6g, N = %.6g; scale = %
     pid_gain_source, pid_h_dc_dm_values.P, pid_h_dc_dm_values.I, ...
     pid_h_dc_dm_values.D, pid_h_dc_dm_values.derivative_filter_N, ...
     pid_h_dc_dm_values.PID_scale);
+
+if exist('outputVerificationFile', 'var') && ~isempty(outputVerificationFile)
+    result = struct('hs', hs, 'specimen_file', specimen_file, ...
+        'exp_tf_file', h_dc_dm_model_file, 'phase_lead_file', phase_lead_file, ...
+        'pid_values', pid_h_dc_dm_values, 'stability', pid_cl_stability, ...
+        'hinges_control', hinges_control, 'hinges_reference', hinges_reference, ...
+        'peak_dm_mm', max(abs(dm_pid_sample)), ...
+        'peak_force_N', max(abs(experimental_force_pid_sample)), ...
+        'peak_base_shear_N', max(abs(base_shear_pid)));
+    save(outputVerificationFile, 'result');
+end
 
 function [PID_H_dc_dm, pid_values, model_file, actuator_open_loop] = ...
         loadPidHdcDmModel( ...
@@ -615,9 +696,10 @@ end
 end
 
 function [u_num_floors_sample, dd_sample, dd_lead_sample, dm_sample, dc_sample, ...
-        force_sample, stability] = hybridResponseWithPidHdcDm(hs, PID_H_dc_dm, ...
-        pid_values, k_experimental, hs_sample_dt, phase_lead_tf_discrete)
+        force_sample, stability, a_floors_sample, hinges] = hybridResponseWithPidHdcDm(hs, PID_H_dc_dm, ...
+        pid_values, k_experimental, hs_sample_dt, phase_lead_tf_discrete, nl_num)
 % Units: dd/dd_lead/dm/dc [mm], force [N], floor displacement [m].
+% nl_num nonempty: nonlinear numerical sub stepped with the current fm.
 num_model = numericalSubstructureDiscrete(hs, hs_sample_dt);
 actuator = discreteSiso(PID_H_dc_dm, hs_sample_dt);
 lead_filter = discreteSiso(phase_lead_tf_discrete, hs_sample_dt);
@@ -634,6 +716,7 @@ hs_real_time = (0:n_step-1)'*hs_sample_dt;
 hs_model_time = hs_real_time/hs.time_scale_factor;
 ag_sample = interp1(hs.time, hs.ag, hs_model_time, 'linear', 0);
 u_num_floors_sample = zeros(n_step, hs.n_floor);
+a_floors_sample = zeros(n_step, hs.n_floor);
 dd_sample = zeros(n_step, 1);
 dd_lead_sample = zeros(n_step, 1);
 dm_sample = zeros(n_step, 1);
@@ -642,23 +725,49 @@ force_sample = zeros(n_step, 1);
 x_num = zeros(size(num_model.A, 1), 1);
 k_mm = k_experimental/1000;
 denominator = 1 - num_model.D_fm*k_mm*actuator.D*lead_filter.D;
+nl_state = [];
+hinges = [];
+% Nonlinear stepping uses fm from the actuator state (no direct feedthrough).
+assert(isempty(nl_num) || actuator.D == 0, ...
+    'Nonlinear vHS requires zero actuator direct feedthrough.')
 for step = 2:n_step
-    dd_sample(step) = (num_model.C*x_num ...
-        + num_model.D_fm*k_mm*actuator.D*lead_filter.C*lead_filter.x ...
-        + num_model.D_fm*k_mm*actuator.C*actuator.x ...
-        + num_model.D_ag*ag_sample(step))/denominator;
+    if isempty(nl_num)
+        dd_sample(step) = (num_model.C*x_num ...
+            + num_model.D_fm*k_mm*actuator.D*lead_filter.C*lead_filter.x ...
+            + num_model.D_fm*k_mm*actuator.C*actuator.x ...
+            + num_model.D_ag*ag_sample(step))/denominator;
+    else
+        [dd_sample(step), nl_state] = step_HS_nonlinear( ...
+            k_mm*actuator.C*actuator.x, 0, nl_num, nl_state);
+    end
     dd_lead_sample(step) = outputDiscreteSiso(lead_filter, dd_sample(step));
     dm_sample(step) = outputDiscreteSiso(actuator, dd_lead_sample(step));
     force_sample(step) = k_mm*dm_sample(step);
     dc_sample(step) = outputDiscreteSiso(controller, ...
         dd_lead_sample(step)-dm_sample(step));
-    x_num = num_model.A*x_num + num_model.B_fm*force_sample(step) ...
-        + num_model.B_ag*ag_sample(step);
+    if isempty(nl_num)
+        x_num = num_model.A*x_num + num_model.B_fm*force_sample(step) ...
+            + num_model.B_ag*ag_sample(step);
+    end
     lead_filter = updateDiscreteSiso(lead_filter, dd_sample(step));
     actuator = updateDiscreteSiso(actuator, dd_lead_sample(step));
     controller = updateDiscreteSiso(controller, ...
         dd_lead_sample(step)-dm_sample(step));
-    u_num_floors_sample(step, :) = x_num(1:hs.n_floor)';
+    if isempty(nl_num)
+        u_num_floors_sample(step, :) = x_num(1:hs.n_floor)';
+        a_floors_sample(step, :) = x_num(2*hs.n_floor+(1:hs.n_floor))';
+    else
+        u_num_floors_sample(step, :) = nl_state(1:hs.n_floor)';
+        nd = size(nl_num.K, 1);
+        a_floors_sample(step, :) = nl_state(2*nd+(1:hs.n_floor))';
+        hinges = hs_hinge_summary(hinges, nl_num, nl_state(1:nd), ...
+            nl_state(3*nd+(1:numel(nl_num.Mp))), ...
+            nl_state(3*nd+numel(nl_num.Mp)+1));
+    end
+end
+if isempty(nl_num)
+    hinges = elastic_hs_hinges(hs.fem.num, true, u_num_floors_sample, ...
+        dd_sample, hs_model_time);
 end
 end
 

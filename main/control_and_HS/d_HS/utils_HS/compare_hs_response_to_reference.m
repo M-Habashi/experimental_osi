@@ -66,18 +66,29 @@ pause_enable = pause_enable(1:n);
 
 hs = buildHsModel(fem, earthquake_type, intensity_factor, ...
     time_scale_factor, force_sign, project_folder);
-[u_test, u_control_test_mm, effective_time] = replayRecordedHs( ...
+if isfield(data, 'hs') && isfield(data.hs, 'structural_model')
+    hs.structural_model = data.hs.structural_model;
+end
+[u_test, u_control_test_mm, effective_time, a_test, hinges_test] = replayRecordedHs( ...
     fm, pause_enable, dt, hs);
-[u_reference, u_control_reference] = fullReferenceAtEffectiveTime( ...
+[u_reference, u_control_reference, a_reference, hinges_reference] = fullReferenceAtEffectiveTime( ...
     fem.ref, hs, effective_time, dt);
+ag = interp1(hs.time, hs.ag, effective_time/hs.time_scale_factor, 'linear', 0);
+base_shear_test = hs_base_shear(hs.M, ...
+    fem.num.influence(fem.num.floor_dofs), a_test, ag);
+base_shear_reference = hs_base_shear(fem.ref.M, fem.ref.influence, a_reference, ag);
 if plot_enabled
-    plotReferenceControlDisplacement(effective_time, dm, dm_filtfilt, fm, ...
-        u_control_test_mm, u_control_reference, ...
-        pause_enable, fem.ref);
-    plotFloorReferenceComparison(effective_time, u_test, u_reference, ...
-        pause_enable);
+    plotStructuralReferenceComparison(effective_time, u_test, u_reference, ...
+        pause_enable, dm, dm_filtfilt, u_control_test_mm, ...
+        u_control_reference, base_shear_test, base_shear_reference);
     plotResponseFrequencyContent(hs, fem.num, u_test, effective_time, ...
         pause_enable, dt);
+    plot_hs_plastic_hinges(hs, hinges_test, hinges_reference);
+    active = pause_enable == 0;
+    if ~any(active), active = true(size(pause_enable)); end
+    plot_hs_roof_hysteresis([u_reference(active, end), u_test(active, end)], ...
+        [base_shear_reference(active), base_shear_test(active)], ...
+        {'Full FEM', 'HS (reconstructed)'});
 end
 
 running = pause_enable == 0;
@@ -119,7 +130,10 @@ if nargout > 1
         'u_reference', u_reference, ...
         'dm_filtfilt', dm_filtfilt, ...
         'u_control_test_mm', u_control_test_mm, ...
-        'u_control_reference', u_control_reference);
+        'u_control_reference', u_control_reference, ...
+        'base_shear_test_N', base_shear_test, ...
+        'base_shear_reference_N', base_shear_reference, ...
+        'hinges_test', hinges_test, 'hinges_reference', hinges_reference);
 end
 end
 
@@ -254,108 +268,73 @@ hs.time_scale_factor = time_scale_factor;
 hs.force_sign = force_sign;
 end
 
-function [u_test, u_control_test_mm, effective_time] = replayRecordedHs( ...
+function [u_test, u_control_test_mm, effective_time, a_test, hinges] = replayRecordedHs( ...
         fm, pause_enable, dt, hs)
 n = numel(fm);
 state = [];
 u_test = zeros(n, hs.n_floor);
+a_test = zeros(n, hs.n_floor);
 u_control_test_mm = zeros(n, 1);
 effective_time = zeros(n, 1);
+nonlinear = is_hs_nonlinear(hs);
+if nonlinear
+    cfg = prepare_hs_nonlinear(hs, dt, 'num');
+    nd = size(cfg.K, 1);
+else
+    nd = hs.n_floor;
+end
+ok = true;
+hinges = [];
 for step = 2:n
-    [u_control_test_mm(step), state] = step_HS( ...
-        fm(step), pause_enable(step), dt, hs, state);
+    if nonlinear
+        [u_control_test_mm(step), state, ok] = step_HS_nonlinear( ...
+            fm(step), pause_enable(step), cfg, state);
+    else
+        [u_control_test_mm(step), state] = step_HS( ...
+            fm(step), pause_enable(step), dt, hs, state);
+    end
     u_test(step, :) = state(1:hs.n_floor)';
+    a_test(step, :) = state(2*nd+(1:hs.n_floor))';
     effective_time(step) = effective_time(step - 1);
-    if pause_enable(step) == 0
+    if pause_enable(step) == 0 && ok % failure holds freeze the clock
         effective_time(step) = effective_time(step) + dt;
     end
+    if nonlinear
+        hinges = hs_hinge_summary(hinges, cfg, state(1:nd), ...
+            state(3*nd+(1:numel(cfg.Mp))), effective_time(step)/hs.time_scale_factor);
+    end
+end
+if ~nonlinear
+    hinges = elastic_hs_hinges(hs.fem.num, true, u_test, u_control_test_mm, ...
+        effective_time/hs.time_scale_factor);
 end
 end
 
-function [u_reference, u_control_reference] = fullReferenceAtEffectiveTime(fem_ref, hs, ...
+function [u_reference, u_control_reference, a_reference, hinges] = fullReferenceAtEffectiveTime(fem_ref, hs, ...
         effective_time, dt)
 reference_time = (0:round(max(effective_time)/dt))'*dt;
 reference_model_time = reference_time/hs.time_scale_factor;
-ag = interp1(hs.time, hs.ag, reference_model_time, 'linear', 0);
-reference_load = -(fem_ref.M*fem_ref.influence)*ag';
-u_reference_grid = newmarkAverageAcceleration(reference_time, ...
-    fem_ref.M, hs.C, fem_ref.K, reference_load);
-u_control_grid = referenceControlDisplacement(fem_ref, u_reference_grid);
+if is_hs_nonlinear(hs)
+    [u_reference_grid, u_control_grid, ~, a_reference_grid, hinges] = replay_hs_nonlinear( ...
+        prepare_hs_nonlinear(hs, dt, 'ref'), zeros(size(reference_time)));
+    u_control_grid = u_control_grid/1000;
+else
+    ag = interp1(hs.time, hs.ag, reference_model_time, 'linear', 0);
+    reference_load = -(fem_ref.M*fem_ref.influence)*ag';
+    [u_reference_grid, ~, a_reference_grid] = newmarkAverageAcceleration(reference_time, ...
+        fem_ref.M, hs.C, fem_ref.K, reference_load);
+    u_control_grid = referenceControlDisplacement(fem_ref, u_reference_grid);
+    hinges = elastic_hs_hinges(fem_ref, false, u_reference_grid, [], reference_model_time);
+end
 reference_index = round(effective_time/dt) + 1;
 u_reference = u_reference_grid(reference_index, :);
 u_control_reference = u_control_grid(reference_index);
+a_reference = a_reference_grid(reference_index, :);
 end
 
-function plotReferenceControlDisplacement(effective_time, dm, dm_filtfilt, fm, ...
-        u_control_test_mm, u_control_reference, pause_enable, fem_ref)
-active = pause_enable == 0;
-if ~any(active)
-    active = true(size(pause_enable));
-end
-
-x = effective_time(active);
-dm = dm(active);
-dm_filtfilt = dm_filtfilt(active);
-fm = fm(active);
-u_control_test_mm = u_control_test_mm(active);
-u_control_reference = u_control_reference(active);
-
-colors = getPlotColors();
-figure('Color', 'w', 'Name', 'HS control-point displacement and force comparison');
-layout = tiledlayout(2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
-
-ax(1) = nexttile;
-plot(ax(1), x, u_control_test_mm, 'k--', 'LineWidth', 2.0, ...
-    'DisplayName', 'd\_n (numerical sub)');
-hold(ax(1), 'on')
-plot(ax(1), x, dm, '-', 'Color', colors.blue, 'LineWidth', 1.0, ...
-    'DisplayName', 'dm (measured)');
-plot(ax(1), x, dm_filtfilt, '-', 'Color', colors.blue, ...
-    'LineWidth', 1.3, 'DisplayName', 'dm\_filtfilt');
-plot(ax(1), x, 1000*u_control_reference, '-', ...
-    'Color', colors.green, 'LineWidth', 1.2, ...
-    'DisplayName', 'd\_r (full FEM)');
-hold(ax(1), 'off')
-grid(ax(1), 'on')
-ylabel(ax(1), 'Displacement (mm)')
-legend_handle = legend(ax(1), 'Location', 'best');
-legend_handle.ItemHitFcn = @toggleSignalVisibility;
-
-ax(2) = nexttile;
-plot(ax(2), x, fm, '-', 'Color', colors.purple, 'LineWidth', 1.0, ...
-    'DisplayName', 'fm (measured force)');
-grid(ax(2), 'on')
-setForceYTicks(ax(2), fm)
-xlabel(ax(2), 'Effective HS time (s)')
-ylabel(ax(2), 'Force (N)')
-legend_handle = legend(ax(2), 'Location', 'best');
-legend_handle.ItemHitFcn = @toggleSignalVisibility;
-
-title(layout, sprintf('Control-point displacement and force at %.4g m', ...
-    fem_ref.experimental_column.height))
-linkaxes(ax, 'x')
-end
-
-function setForceYTicks(ax, fm)
-force_limit = max(abs(fm(isfinite(fm))));
-if isempty(force_limit) || force_limit == 0
-    return
-end
-tick_step = niceTickStep(force_limit/5);
-force_limit = tick_step*ceil(force_limit/tick_step);
-ylim(ax, [-force_limit force_limit])
-yticks(ax, -force_limit:tick_step:force_limit)
-end
-
-function step = niceTickStep(raw_step)
-base = 10^floor(log10(raw_step));
-candidates = base*[1 2 5 10];
-[~, idx] = min(abs(candidates-raw_step));
-step = candidates(idx);
-end
-
-function plotFloorReferenceComparison(effective_time, u_test, ...
-        u_reference, pause_enable)
+function plotStructuralReferenceComparison(effective_time, u_test, ...
+        u_reference, pause_enable, dm, dm_filtfilt, ...
+        u_control_test_mm, u_control_reference, base_shear_test, base_shear_reference)
 active = pause_enable == 0;
 if ~any(active)
     active = true(size(pause_enable));
@@ -366,8 +345,30 @@ u_test = u_test(active, :);
 u_reference = u_reference(active, :);
 
 colors = getPlotColors();
-figure('Color', 'w', 'Name', 'HS numerical sub floor comparison');
-layout = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+figure('Color', 'w', 'Name', 'HS structural response comparison', ...
+    'Position', [80 50 1100 950]);
+layout = tiledlayout(5, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+dm = dm(active);
+dm_filtfilt = dm_filtfilt(active);
+u_control_test_mm = u_control_test_mm(active);
+u_control_reference = u_control_reference(active);
+ax = nexttile;
+plot(ax, x, u_control_test_mm, 'k--', 'LineWidth', 2.0, ...
+    'DisplayName', 'd\_n (numerical sub)');
+hold(ax, 'on')
+plot(ax, x, dm, '-', 'Color', colors.blue, 'LineWidth', 1.0, ...
+    'DisplayName', 'dm (measured)');
+plot(ax, x, dm_filtfilt, '-', 'Color', colors.blue, ...
+    'LineWidth', 1.3, 'DisplayName', 'dm\_filtfilt');
+plot(ax, x, 1000*u_control_reference, '-', ...
+    'Color', colors.green, 'LineWidth', 1.2, ...
+    'DisplayName', 'd\_r (full FEM)');
+hold(ax, 'off')
+grid(ax, 'on')
+ylabel(ax, 'Displacement (mm)')
+legend_handle = legend(ax, 'Location', 'best');
+legend_handle.ItemHitFcn = @toggleSignalVisibility;
+
 for floor_id = 1:3
     ax = nexttile;
     plot(ax, x, u_reference(:, floor_id), '--', ...
@@ -382,11 +383,20 @@ for floor_id = 1:3
     ylabel(ax, sprintf('Floor %d (m)', floor_id))
     legend_handle = legend(ax, 'Location', 'best');
     legend_handle.ItemHitFcn = @toggleSignalVisibility;
-    if floor_id == 3
-        xlabel(ax, 'Effective HS time (s)')
-    end
 end
-title(layout, 'Full FEM reference vs numerical sub floor response')
+ax = nexttile;
+plot(ax, x, base_shear_reference(active)/1000, '--', ...
+    'Color', colors.purple, 'LineWidth', 2.2, 'DisplayName', 'Full FEM');
+hold(ax, 'on')
+plot(ax, x, base_shear_test(active)/1000, '-', ...
+    'Color', colors.purple, 'LineWidth', 1.2, 'DisplayName', 'HS (reconstructed)');
+hold(ax, 'off'); grid(ax, 'on')
+ylabel(ax, 'Base shear (kN)')
+xlabel(ax, 'Effective HS time (s)')
+legend_handle = legend(ax, 'Location', 'best');
+legend_handle.ItemHitFcn = @toggleSignalVisibility;
+title(layout, 'Control point, floors and total base shear vs full FEM')
+linkaxes(findall(gcf, 'Type', 'axes'), 'x')
 end
 
 function plotResponseFrequencyContent(hs, fem_num, u_test, effective_time, ...

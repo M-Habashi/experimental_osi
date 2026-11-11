@@ -1,6 +1,14 @@
 # Optional nonlinear HS test — revised after Opus review
 
-Proposal only. No production MATLAB or Simulink changes have been implemented.
+## Implementation status (29 October 2026)
+
+Implemented and verified offline and on Speedgoat (no actuator motion). Evidence is in `.codex/verification/hs_nonlinear/`; visualization: `docs/nonlinear_hs_models.html`.
+
+- Solver: `prepare_hs_nonlinear.m`, `step_HS_nonlinear.m` (plus `replay_hs_nonlinear.m`, `is_hs_nonlinear.m`). Matches `step_HS` below yield (8e-10 mm over SP2 test 2) and the research replay at 2.5x (same hinges and first-hinge times, floors within 1.4e-9 m). Pause/resume and failure holds keep the state exactly.
+- vHS: nonlinear reference, nonlinear spring check and controller path. Linear mode reproduces the previous vHS exactly. At SP2, El Centro 2.5x, time scale 20: 5 numerical and 6 reference hinges, all first-floor beam ends, no column hinges.
+- Simulink: `Signal Generation/Hybrid Simulation` has non-tunable `hs_nl_enable`/`hs_nl` and a separate fixed-size state; `main_ColumnSetup.m` sets `hs.structural_model` (default `'linear'`).
+- Speedgoat smoke test (`run_hs_nonlinear_speedgoat_smoke.m`, 125 s, OSI on, HS unpaused, El Centro 12x at time scale 1, `sat_limit` 0.01 mm): nonlinear TETMax 96.9 us (19.8% of 488.28 us), linear 73.0 us (14.9%). At 12x the active set needs at most 4 iterations, with 28 simultaneously active hinges; the 30-iteration cap is estimated at about 260 us.
+- Simplifications kept: no hinge histories or `ok` flag are logged and no `hs.nl` copy is saved. Replays rebuild the configuration from the saved FEM and reproduce failure holds deterministically. A failure hold freezes the replay clock.
 
 ## Keep it simple
 

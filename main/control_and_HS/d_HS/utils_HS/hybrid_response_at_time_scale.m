@@ -10,6 +10,15 @@ hs_real_time = (0:ceil(real_time(end)/sample_dt))'*sample_dt;
 hs_model_time = hs_real_time/hs.time_scale_factor;
 ag_sample = interp1(model_time, hs.ag, hs_model_time, 'linear', 0);
 
+if is_hs_nonlinear(hs)
+    % Nonlinear spring configuration, then replay its ideal fm.
+    [~, dd_spring] = replay_hs_nonlinear(prepare_hs_nonlinear(hs, ...
+        sample_dt, 'num', k_experimental), zeros(size(hs_real_time)));
+    u_num_floors_sample = replay_hs_nonlinear(prepare_hs_nonlinear(hs, ...
+        sample_dt, 'num'), k_experimental*dd_spring/1000/hs.force_sign);
+    return
+end
+
 floor_dofs = fem_num.floor_dofs(:)';
 interface_dof = fem_num.interface_dof;
 K_coupled = fem_num.K;

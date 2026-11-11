@@ -33,6 +33,11 @@
 - The published viewer is https://rths-viewer.vercel.app/. Its `data/test-manifest.json` and `data/report-metadata.json` map exported data and display names. Local website source files were not found in the searched sibling projects; the original MAT recordings were found.
 - Viewer SP2 mapping to old-project raw files: `sp2_test1` = `20260731\sp2_RTHS_linear_10x.mat`; `sp2_test2` = `20260801\SP2_HS.mat`; `sp2_test3`, `sp2_test4`, `sp2_test5` = `20260826\20260826_1601_testing_OSI.mat`, `20260826\20260826_1652_testing_OSI.mat`, `20260826\20260826_1732_testing_OSI.mat`, respectively. Paths are relative to the old project's `main\saved_results\tests`. Viewer folder names (`sp2_or`, `sp2_retrofitted`) differ from these raw-file folders.
 
+## Fixed Experimental Baseline
+
+- Whenever the user asks for "baseline settings" or equivalent, provide the complete configuration table from `main/docs/experiment_baseline.md`, including the recording date and filename. Do not substitute current script defaults.
+- The fixed baseline is the SP2 physical experiment `20260826_1732_testing_OSI.mat` (26 August 2026 at 17:32, viewer SP2 test 5). Keep it for future comparisons until the user explicitly changes it.
+
 ## RTHS Plot Notation
 
 - `dm`: measured actuator displacement response from the experiment at the interface/control point, approximately the zero-moment point around mid-column.

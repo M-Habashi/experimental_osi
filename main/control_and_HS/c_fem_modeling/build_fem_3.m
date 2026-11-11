@@ -63,7 +63,11 @@ assert(isfield(specimen, 'k'), ...
     'The selected specimen file must contain lateral stiffness k.');
 specimen_si = specimen_params_si(specimen);
 [~, specimen_stem] = fileparts(specimen_name);
-fem_model_name = prompt_fem_model_name();
+if exist('fem_model_name_override', 'var') && ~isempty(fem_model_name_override)
+    fem_model_name = fem_model_name_override;
+else
+    fem_model_name = prompt_fem_model_name();
+end
 fem_file_stem = make_safe_file_stem(fem_model_name);
 
 %% STEP 1: MATCH THE MEASURED LATERAL STIFFNESS
