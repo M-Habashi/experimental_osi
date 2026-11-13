@@ -47,6 +47,19 @@ validateattributes(PID_scale, {'numeric'}, ...
 k_exp_r =1;
 plot_partition = false; % Optional static frame/partition geometry figure.
 hs_sample_dt = 1/2048;
+last_files_file = fullfile(project_root, 'saved_results', 'vhs_last_files.mat');
+reuse_last_files = isfile(last_files_file) && ~any(ismember( ...
+    {'exp_specimen_file_override', 'specimen_file_override', ...
+    'h_dc_dm_model_file_override', 'fem_file_override', ...
+    'phase_lead_file_override'}, who)) ...
+    && strcmpi(input('Use the same files as the last vHS run? (y/n): ', 's'), 'y');
+if reuse_last_files
+    last_files = load(last_files_file);
+    specimen_file_override = last_files.specimen_file;
+    h_dc_dm_model_file_override = last_files.h_dc_dm_model_file;
+    fem_file_override = last_files.fem_file;
+    phase_lead_file_override = last_files.phase_lead_file;
+end
 if exist('exp_specimen_file_override', 'var') ...
         && ~isempty(exp_specimen_file_override)
     [specimen, specimen_file, specimen_name] = load_saved_result_file( ...
@@ -87,7 +100,13 @@ else
     [phase_lead_data, phase_lead_file, phase_lead_name] = ...
         load_saved_result_file(project_root, 'phase_lead');
 end
-phase_lead_tf = phase_lead_data.phase_lead_tf;
+if reuse_last_files
+    clear specimen_file_override h_dc_dm_model_file_override ...
+        fem_file_override phase_lead_file_override
+end
+save(last_files_file, 'specimen_file', 'h_dc_dm_model_file', 'fem_file', ...
+    'phase_lead_file');
+phase_lead_tf =phase_lead_data.phase_lead_tf;
 phase_lead_tf_discrete = c2d(phase_lead_tf, hs_sample_dt, 'tustin');
 phase_lead = [];
 if isfield(phase_lead_data, 'phase_lead')
