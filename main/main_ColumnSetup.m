@@ -56,11 +56,12 @@ hs = struct( ...
     'fem_file', fullfile(projectFolder, 'saved_results', ...
     'fem', 'fem_sp3_1o.mat'), ...
     'exp_tf_file', fullfile(projectFolder, 'saved_results', ...
-    'exp_tf', 'sp3_tf_1o_20261109_113345.mat'), ...
+    'exp_tf', 'tf_sp4_20261116_130910.mat'), ...
     'phase_lead_file', fullfile(projectFolder, 'saved_results', ...
-    'phase_lead', 'pl_sp3_3.mat'), ...
+    'phase_lead', 'pl_sp4_withNotch.mat'), ...
     'earthquake_type', 'el_centro', ... % Field name in input_signals/earthquakes.mat.
-    'intensity_factor', 12, ...   % Earthquake acceleration multiplier.
+    'intensity_factor', 1, ...   % Earthquake acceleration multiplier.
+    'notch', true, ...            % true: notch on PID error; false: bypass.
     'time_scale_factor', 20.0, ...  % >1 stretches earthquake time; dt is unchanged.
     'force_sign', 1.0, ...         % Use -1 only if force calibration requires it.
     'structural_model', 'bilinear_hinges', ... % 'linear' or 'bilinear_hinges'.
@@ -85,11 +86,27 @@ dt = 1/fs;                      % Sampling period [s]
 zero_alpha = dt/0.5;              % Adaptive measurement zeroing update gain
 t_ending = 5;                   % Smooth-stop transition time [s]
 
+% Paper 3: the same reference lead is used with hs.notch true or false.
+% The notch is on the PID error, inside the actuator feedback loop.
+hs.pid_notch = struct('frequency_hz', 26.62044547132503, ...
+    'zeta_zero', 0.07501945102515227, 'zeta_pole', 0.15004878881239148);
+notch_w = 2*pi*hs.pid_notch.frequency_hz;
+pid_notch_tf = tf([1 2*hs.pid_notch.zeta_zero*notch_w notch_w^2], ...
+    [1 2*hs.pid_notch.zeta_pole*notch_w notch_w^2]);
+if ~hs.notch
+    pid_notch_tf = tf(1);
+end
+pid_notch_discrete = c2d(pid_notch_tf, dt, 'tustin');
+[pid_notch_num, pid_notch_den] = tfdata(pid_notch_discrete, 'v');
+
 % phase_lead used on the Hybrid Simulation numerical dd command.
 [phase_lead_data, phase_lead_file, phase_lead_name] = ...
     load_saved_result_file(projectFolder, 'phase_lead', false, ...
     hs.phase_lead_file);
 phase_lead_tf = phase_lead_data.phase_lead_tf;
+if isfield(phase_lead_data, 'common_phase_lead_tf')
+    phase_lead_tf = phase_lead_data.common_phase_lead_tf;
+end
 phase_lead_tf_discrete = c2d(phase_lead_tf, dt, 'tustin');
 [phase_lead_num, phase_lead_den] = tfdata(phase_lead_tf_discrete, 'v');
 phase_lead_num = phase_lead_num(:).';
@@ -114,6 +131,8 @@ pid_I = pid_values.I;
 pid_D = pid_values.D;
 pid_N = pid_values.derivative_filter_N;
 fprintf('phase_lead loaded: %s\n', phase_lead_file)
+fprintf('PID-path notch: %d (theoretical center %.6g Hz); shared reference lead\n', ...
+    hs.notch, hs.pid_notch.frequency_hz)
 fprintf('PID gains used (%s): P = %.6g, I = %.6g, D = %.6g, N = %.6g\n', ...
     pid_gain_source, pid_P, pid_I, pid_D, pid_N)
 
@@ -210,6 +229,17 @@ hs_nl = rmfield(prepare_hs_nonlinear(hs, dt, 'num'), {'kind', 'labels'});
 hs_nl_enable = double(is_hs_nonlinear(hs));
 
 sol_osi_setup = prepare_sol_osi_runtime(projectFolder, dt, hs, pid_values);
+if hs.notch
+    % Reuse the existing OSI configuration equations with the actual loop.
+    cfg = sol_osi_setup.cfg;
+    nominal_loop = frd(cfg.L0, 2*pi*cfg.freq_hz, dt)*pid_notch_discrete;
+    cfg = sol_osi('config', dt, nominal_loop, hs.sol_osi_override.osi);
+    osis(13) = cfg.nominal; % Existing fixed-size pack: nominal NCF.
+    osibins(:,4:7) = [real(cfg.L0), imag(cfg.L0), cfg.shape, cfg.nominal_curve];
+    sol_osi_setup.cfg = cfg;
+    sol_osi_setup.osis = osis;
+    sol_osi_setup.osibins = osibins;
+end
 exp_tf_file = sol_osi_setup.exp_tf_file;
 exp_tf_name = sol_osi_setup.exp_tf_name;
 fprintf('exp_tf loaded: %s\n', exp_tf_file)
@@ -257,6 +287,8 @@ fprintf('  Time scale factor: %.6g\n', hs.time_scale_factor)
 [~, exp_tf_name, exp_tf_ext] = fileparts(exp_tf_file);
 fprintf('  FEM file: %s\n', [fem_name fem_ext])
 fprintf('  phase_lead file: %s\n', [phase_lead_name phase_lead_ext])
+fprintf('  PID-path notch enabled: %d, center: %.6g Hz\n', ...
+    hs.notch, hs.pid_notch.frequency_hz)
 fprintf('  exp_tf file: %s\n', [exp_tf_name exp_tf_ext])
 fprintf('  OSI target: %.6g, gain initial: %.6g, minimum factor: %.6g\n', ...
     sol_osi_setup.target_outer_ncf, sol_osi_setup.gain_initial, ...
@@ -374,6 +406,7 @@ result = struct('t', t, 'dd', dd, 'dc', dc, 'dm', dm, ...
     'Results', Results, 'logsout', logsout, 'testname', testname, ...
     'test_type', test_type, 'model', model, 'runStartTime', runStartTime, ...
     'pid_values', pid_values, 'pid_gain_source', pid_gain_source, ...
+    'phase_lead_tf', phase_lead_tf, 'pid_notch_tf', pid_notch_tf, ...
     'file', [timestamp '_' testname '.mat']);
 if exist('hs', 'var')
     result.hs = hs;

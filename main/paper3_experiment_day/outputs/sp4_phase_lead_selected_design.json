@@ -1,0 +1,17 @@
+{
+  "authority": 1.0,
+  "zero_hz": [
+    4.209918696605153,
+    500.0
+  ],
+  "pole_hz": [
+    15.215605561723676,
+    120.0
+  ],
+  "gain": 0.8674146932477395,
+  "notch_hz": 26.62044547132503,
+  "notch_zeta_zero": 0.07501945102515227,
+  "notch_zeta_pole": 0.15004878881239148,
+  "placement": "Base lead in HS reference path; notch inside PID forward feedback path.",
+  "selection_note": "Shared roll-off pole set to 120 Hz for the full-model gain screen; PID and authority unchanged."
+}

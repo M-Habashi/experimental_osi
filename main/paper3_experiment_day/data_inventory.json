@@ -1,0 +1,81 @@
+{
+  "experiment_day": "2026-11-16",
+  "description": "Supporting data snapshot; checksums matched canonical source files when packaged.",
+  "files": [
+    {
+      "path": "saved_results/tests/20261116/SP4_linear_id.mat",
+      "bytes": 448629832,
+      "sha256": "99bf57cf58ddbbce64273c4911ec7f73c11d518f9891e62a6e0f0e33b91241ef"
+    },
+    {
+      "path": "saved_results/specimens/sp4.mat",
+      "bytes": 1126,
+      "sha256": "d521ed56c06b6c57cd6d0c0d724edf3e2167ba7d57c58952ad6d03e6685f2495"
+    },
+    {
+      "path": "saved_results/exp_tf/tf_sp4_20261116_130910.mat",
+      "bytes": 15342100,
+      "sha256": "0545083af0b79d7240452133a6c7a19fa53109f14e095727eaf53a7dde307007"
+    },
+    {
+      "path": "saved_results/tests/20261116/SP4_plasticRange_id.mat",
+      "bytes": 163196011,
+      "sha256": "7de387777562a2ce7ed78290ae79bfb6decd69e24892c109fdd0f75faa4f5ec0"
+    },
+    {
+      "path": "saved_results/specimens/SP4_dmgd.mat",
+      "bytes": 1135,
+      "sha256": "e95251a32c7aac9265a98ac45d7b11b1f174b95e24301157a4c4bb7a20942817"
+    },
+    {
+      "path": "saved_results/exp_tf/tf_SP4_dmgd_20261116_142110.mat",
+      "bytes": 10866485,
+      "sha256": "029815e6e63a9b84fee3374ecb0aa883002192e9a3479782b019a0a21ad32769"
+    },
+    {
+      "path": "saved_results/tests/20261116/SP4_sine_repetitve_proof.mat",
+      "bytes": 311107921,
+      "sha256": "ce9f9b3df314eaa84511db33f8dd4177d32eabadf4242162fd7fcf134cb0e2ff"
+    },
+    {
+      "path": "saved_results/tests/20261116/20261116_1326_testing_OSI.mat",
+      "bytes": 355888540,
+      "sha256": "633ede25d5d5726a9c835ee541b7778815253a2ce1aebc417b8f86bf58b36a26"
+    },
+    {
+      "path": "saved_results/tests/20261116/20261116_1314_testing_OSI.mat",
+      "bytes": 273164499,
+      "sha256": "98934c1f3469535984404afe4539b92865d125380115f39ae382fde1cf945ac7"
+    },
+    {
+      "path": "saved_results/phase_lead/pl_sp3_3.mat",
+      "bytes": 51331,
+      "sha256": "5e1780775be7dc7e8eeac74dd93f2085a5fc014a9f4c5f9e0ca75710fbd6ac12"
+    },
+    {
+      "path": "saved_results/phase_lead/pl_sp3_4.mat",
+      "bytes": 2159,
+      "sha256": "cc1657b127ec6ca4c946ddbe71ea997be656c33c9db3558f3912d65a01e5c2a9"
+    },
+    {
+      "path": "saved_results/fem/fem_sp3_1o.mat",
+      "bytes": 3968,
+      "sha256": "4d38731f31d929197bc59bd04575ee80f24a887e039222a16adec006dc432448"
+    },
+    {
+      "path": "saved_results/exp_tf/sp3_tf_1o_20261109_113345.mat",
+      "bytes": 12718537,
+      "sha256": "994c5adfb9a3596ee943243e82924b43eef04a60164175f783b5427fca7249c2"
+    },
+    {
+      "path": "saved_results/specimens/sp3_1o.mat",
+      "bytes": 1145,
+      "sha256": "84909abdc54bb97cd02d123f9480405dd81c239ccafcceae814a2e3feeb62b12"
+    },
+    {
+      "path": "input_signals/earthquakes.mat",
+      "bytes": 1001759,
+      "sha256": "9ddb93d89daa1538f533f73cfb1f9a95a8960185ef1614fe291b8eae1a63a4ba"
+    }
+  ]
+}
