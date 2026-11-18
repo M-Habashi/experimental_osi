@@ -64,8 +64,8 @@ hs = struct( ...
     'time_scale_factor', 20.0, ...  % >1 stretches earthquake time; dt is unchanged.
     'force_sign', 1.0, ...         % Use -1 only if force calibration requires it.
     'structural_model', 'bilinear_hinges', ... % 'linear' or 'bilinear_hinges'.
-    'robin_enable', 0, ...         % 1 = Robin-Dirichlet HS block (step_HS_robin).
-    'robin_override', struct(), ... % step_HS_robin params, e.g. adapt_M = true.
+    'robin_enable', 1, ...         % 1 = Robin-Dirichlet HS block (step_HS_robin).
+    'robin_override', struct('adapt_M', false, 'adapt_K', true), ...
     'osi_gain_initial', 1.0, ...
     'osi_gain_min', 0.1, ...
     'target_outer_ncf', 0.4, ... % SOL_OSI regulated NCF target.
@@ -211,7 +211,7 @@ hs_force_sign_codegen = hs.force_sign;
 hs_nl = rmfield(prepare_hs_nonlinear(hs, dt, 'num'), {'kind', 'labels'});
 hs_nl_enable = double(is_hs_nonlinear(hs));
 
-% Robin-Dirichlet HS block: selected L* (fixed R-D) as the initial operator,
+% Robin-Dirichlet HS block: stiffness only (M_R = C_R = 0). Initial K_R is
 % designed for the identified tracking dd -> dm (HS Delay Compensator x
 % PID-actuator loop) over the paper's 0.5-25 Hz band in earthquake time.
 specimen_si = specimen_params_si(load(fullfile(projectFolder, ...
@@ -222,7 +222,7 @@ robin_tracking = ss(phase_lead_tf_discrete)*feedback(ss(pid(pid_P, ...
     'ForwardEuler'))*ss(c2d(exp_tf_data.H_dc_dm, dt, 'zoh')), 1);
 hs_robin = step_HS_robin('design', step_HS_robin('params', hs, dt, ...
     specimen_si, hs.robin_override), robin_tracking, ...
-    [0.5 25]/hs.time_scale_factor, 0.02);
+    [0.5 25]/hs.time_scale_factor, 0.02, [0; 0; 1]);
 hs_robin_enable = hs.robin_enable;
 
 sol_osi_setup = prepare_sol_osi_runtime(projectFolder, dt, hs, pid_values);

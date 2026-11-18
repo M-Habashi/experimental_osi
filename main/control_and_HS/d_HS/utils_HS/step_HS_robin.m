@@ -2,6 +2,8 @@ function [dd, state] = step_HS_robin(varargin)
 %STEP_HS_ROBIN Fixed or adaptive Robin-Dirichlet Hybrid Simulation step.
 %   prm = step_HS_robin('params', hs, dt, specimen_si, override)
 %   prm = step_HS_robin('design', prm, T, f_band, eps_N)   % sets L*
+%   prm = step_HS_robin('design', prm, T, f_band, eps_N, eta_max)
+%   eta_max = [0; 0; 1] restricts the design to stiffness only.
 %   state = step_HS_robin('state', prm)
 %   [dd, state] = step_HS_robin(fm, um, vm, am, ag, m_hat, state, prm)
 %
@@ -81,12 +83,16 @@ for i = 1:numel(names)
 end
 end
 
-function prm = designRobin(prm, T, f_band, eps_N)
+function prm = designRobin(prm, T, f_band, eps_N, eta_max)
 % Selected Robin operator L* (linear paper, Eq. robin_design): minimize
 % max|E^P| over f_band [Hz] subject to Schur stability and max|E^N| <=
 % eps_N, with 0 <= eta <= 1. T: discrete tracking transfer dd [m] -> um [m]
 % (e.g. phase lead x PID-actuator loop, or z^-d). Nominal specimen.
-% fmincon from L = Z0: local optimum.
+% fmincon from the largest allowed operator: local optimum.
+bounded_design = nargin >= 5;
+if ~bounded_design
+    eta_max = ones(3, 1);
+end
 h = prm.dt;
 f = linspace(f_band(1), f_band(2), 2000)';
 z = exp(2i*pi*h*f);
@@ -101,9 +107,14 @@ EN = @(x) (Zn + Z0(sT, [1 1 1]))./(Zn + Z0(sT, x) + Tr.*Z0(sb, 1 - x)) - 1;
 T = ss(T);
 con = @(x) deal([abs(Tr.*(EN(x) + 1) - 1) - x(4); abs(EN(x)) - eps_N; ...
     spectralRadius(prm, x, T) - (1 - 1e-5)], []);
-x = fmincon(@(x) x(4), ones(4, 1), [], [], [], [], zeros(4, 1), ...
-    [1; 1; 1; Inf], con, optimoptions('fmincon', 'Algorithm', 'sqp', ...
-    'Display', 'off'));
+options = optimoptions('fmincon', 'Algorithm', 'sqp', 'Display', 'off');
+[x, ~, exitflag] = fmincon(@(x) x(4), [eta_max; 1], [], [], [], [], ...
+    zeros(4, 1), [eta_max; Inf], con, options);
+if bounded_design
+    [constraints, ~] = con(x);
+    assert(exitflag > 0 && all(constraints <= options.ConstraintTolerance), ...
+        'The bounded Robin design did not satisfy the stability and error constraints.');
+end
 [prm.eta_M, prm.eta_C, prm.eta_K] = deal(x(1), x(2), x(3));
 end
 
@@ -161,6 +172,11 @@ u_next = (K + a0*M + a1*C)\(force ...
     + M*(a0*u + a2*v + a3*a) + C*(a1*u + a4*v + a5*a));
 a_next = a0*(u_next - u) - a2*v - a3*a;
 v_next = v + h*((1 - gamma)*a + gamma*a_next);
+if state.M_R == 0 && state.C_R == 0 && ~prm.adapt_M
+    % The interface is algebraic. Its derivative history does not enter the solve.
+    v_next(n) = 0;
+    a_next(n) = 0;
+end
 state.x = [u_next; v_next; a_next];
 dd = 1000*u_next(n);
 
