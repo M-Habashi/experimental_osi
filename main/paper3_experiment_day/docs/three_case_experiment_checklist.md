@@ -18,8 +18,11 @@ The reference phase lead is held fixed, not used as the paper's variable.
   is planned for the demonstrated loading protocol.
 - [x] Calculate the preliminary Paper 1 boundary and compare its frequency with
   the degraded identification for context.
-- [x] Design the notch and select its location using the theoretically obtained
-  critical frequency (currently 26.62 Hz), not the experimental resonance.
+- [x] Retain the independent theoretical critical frequency 26.62 Hz. Per the
+  latest operator instruction, locate the active notch at the observed
+  oscillation, 35.3 Hz; diagnostic gain is excluded from design calculations.
+- [x] Load the notch's three parameters from `saved_results/controller_notch/notch_sp4.mat`.
+  Current second-order design stays within 0.049 dB of unity through 10 Hz.
 - [x] Retain previous phase-lead designs as legacy options; the previous J4
   6.85%/6.93% study is historical context rather than the current paper case.
 - [x] Add independent `notch = true/false` beside intensity on branch `Paper-3`'s

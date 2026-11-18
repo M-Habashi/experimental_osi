@@ -1,6 +1,7 @@
 # Paper 3 experiment day — SP4, 16 November 2026
 
 Start with the [checklist and file descriptions](docs/three_case_experiment_checklist.md).
+Active parameter source: [editable MAT-file notch at the observed 35.3 Hz](docs/notch_parameters.md). Diagnostic gain is excluded from its design calculations.
 Current implementation: [outer-PID notch toggle and Simulink block](docs/pid_notch_implementation.md).
 Controller comparison: [four outer-PID open-loop cases, with/without notch](results_analysis/sp4_outer_pid_open_loop.md).
 Earlier reference-lead study: [SP4 matched pair](results_analysis/sp4_phase_lead_pair.md).
