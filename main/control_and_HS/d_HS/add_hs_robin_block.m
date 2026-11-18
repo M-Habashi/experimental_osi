@@ -7,10 +7,12 @@ function add_hs_robin_block(model_file)
 %   columnSetup: global Gotos hs_dm_m (dm [m]), hs_am_g (accelerometer am
 %   [g]), and hs_m_hat (TSE mass).
 %   Signal Generation: MATLAB Function block 'Hybrid Simulation R-D'
-%   (hybrid_simulation_robin_runtime.m) and 'HS coupling switch', which
-%   sends the R-D dd instead of the step_HS dd when hs_robin_enable = 1.
+%   (hybrid_simulation_robin_runtime.m) and 'HS coupling switch'. The
+%   switch selects the R-D dd when enabled, or the existing HS dd otherwise.
 %   Parameters hs_robin and hs_robin_enable come from main_ColumnSetup.m.
 
+assert(strcmp(version('-release'), '2020b'), ...
+    'Run this installer in MATLAB R2020b to preserve the lab model format.');
 if nargin < 1
     model_file = fullfile(fileparts(fileparts(fileparts( ...
         mfilename('fullpath')))), 'model_ColumnSetup_00.slx');
@@ -42,29 +44,31 @@ add_block('simulink/User-Defined Functions/MATLAB Function', ...
 chart = find(sfroot, '-isa', 'Stateflow.EMChart', 'Path', [sg '/' rd]);
 chart.Script = strjoin({
     ['function dd = hybrid_simulation_robin(fm, dm_m, am_g, m_hat, ' ...
-    'pause_enable, hs_robin, hs_time, hs_ag, hs_time_scale_factor_codegen)']
+    'pause_enable, hs_robin_enable, hs_robin, hs_time, hs_ag, hs_time_scale_factor_codegen)']
     '%#codegen'
     '% WARNING - SAFETY CRITICAL: this block sends live HS command displacement.'
-    '% Robin-Dirichlet HS (step_HS_robin); used when hs_robin_enable = 1.'
-    'dd = hybrid_simulation_robin_runtime(fm, dm_m, 9.80665*am_g, m_hat, ...'
-    '    pause_enable, hs_robin, hs_time, hs_ag, hs_time_scale_factor_codegen);'
+    'dd = 0;'
+    'if hs_robin_enable > 0.5'
+    '    dd = hybrid_simulation_robin_runtime(fm, dm_m, 9.80665*am_g, m_hat, ...'
+    '        pause_enable, hs_robin, hs_time, hs_ag, hs_time_scale_factor_codegen);'
+    'end'
     'end'}, newline);
-for p = {'hs_robin', 'hs_time', 'hs_ag', 'hs_time_scale_factor_codegen'}
+for p = {'hs_robin_enable', 'hs_robin', 'hs_time', 'hs_ag', 'hs_time_scale_factor_codegen'}
     d = find(chart, '-isa', 'Stateflow.Data', 'Name', p{1});
     d.Scope = 'Parameter';
 end
 add_line(sg, 'fm/1', [rd '/1'], 'autorouting', 'on');
-tags = {'hs_dm_m', 'hs_am_g', 'hs_m_hat', 'dd_pause_enable'};
-for k = 1:4
+tags = {'hs_dm_m', 'hs_am_g', 'hs_m_hat'};
+for k = 1:numel(tags)
     from = sprintf('From %s rd', tags{k});
     add_block('simulink/Signal Routing/From', [sg '/' from], ...
         'GotoTag', tags{k}, 'Position', [60 1590+35*k 170 1610+35*k]);
     add_line(sg, [from '/1'], sprintf('%s/%d', rd, k + 1), ...
         'autorouting', 'on');
 end
+add_line(sg, 'From dd_pause_enable hs/1', [rd '/5'], 'autorouting', 'on');
 
-% The switch takes over the step_HS output line (HS Delay Compensator and
-% OSI tap subtract).
+% Both the HS Delay Compensator and OSI tap use the selected HS command.
 sw = 'HS coupling switch';
 add_block('simulink/Signal Routing/Switch', [sg '/' sw], ...
     'Criteria', 'u2 > Threshold', 'Threshold', '0.5', ...
