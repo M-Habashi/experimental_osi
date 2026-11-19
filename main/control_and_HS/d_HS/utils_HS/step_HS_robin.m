@@ -16,6 +16,10 @@ function [dd, state] = step_HS_robin(varargin)
 %     adapt_M and/or adapt_K  adaptive R-D (nonlinear paper, design.tex
 %       Eqs. mass_update, stiffness_moments, stiffness_update): M_R and/or
 %       K_R update every update_n samples. C_R is always constant.
+%       K_R follows the slope of a regularized affine fit f = K*u + b over
+%       the exponentially weighted recent path (RLS with forgetting): the
+%       slope is invariant to force offsets and residual deformation, and
+%       the regularization returns it to K_cal when the motion is small.
 %   New coefficients act from the next step, so augmentation and
 %   subtraction always use the same values. L = 0 reproduces step_HS.
 %
@@ -38,7 +42,8 @@ if ischar(varargin{1}) || isstring(varargin{1})
             dd = struct('x', zeros(3*size(prm.K, 1), 1), ...
                 'M_R', prm.eta_M*prm.M0, 'C_R', prm.eta_C*prm.C0, ...
                 'K_R', prm.eta_K*prm.K_cal, ...
-                'S_uf', 0, 'S_uu', 0, 'power', 0, 'count', 0);
+                'S_1', 0, 'S_u', 0, 'S_f', 0, 'S_uf', 0, 'S_uu', 0, ...
+                'power', 0, 'count', 0);
         otherwise
             error('step_HS_robin:UnknownCommand', ...
                 'Use ''params'', ''state'', or a numeric step call.')
@@ -73,7 +78,8 @@ prm = struct('dt', dt, 'n', hs.n_floor, 'M', hs.M, 'C', hs.C, ...
     'T_M', 0.25, ...              % mass relaxation time [s]
     'Mdot_max', 0.5*M0, ...       % mass rate limit [kg/s]
     'T_K', 0.5, ...               % stiffness-fit forgetting time [s]
-    'eps_u', 1e-6, ...            % fit regularization, (1 mm)^2 [m^2]
+    'eps_u', 1e-8, ...            % fit regularization, (0.1 mm)^2 [m^2]:
+    ...                           % a few displacement-noise variances
     'a_rms_min', 0.03, ...        % excitation needed to move M_R [m/s^2]
     'T_power', 0.5);              % acceleration-power window [s]
 names = fieldnames(override);
@@ -197,9 +203,15 @@ if prm.adapt_K
     if mass_ok, m_fit = m_hat; end
     f_int = f - m_fit*am;
     b = 1 - exp(-h_R/prm.T_K);
+    state.S_1 = state.S_1 + b*(1 - state.S_1);
+    state.S_u = state.S_u + b*(um - state.S_u);
+    state.S_f = state.S_f + b*(f_int - state.S_f);
     state.S_uf = state.S_uf + b*(um*f_int - state.S_uf);
     state.S_uu = state.S_uu + b*(um^2 - state.S_uu);
-    state.K_R = min(max(prm.eta_K*(state.S_uf + prm.eps_u*prm.K_cal) ...
-        /(state.S_uu + prm.eps_u), 0), prm.K_max);
+    % Weighted covariance and variance (times S_1 > 0) of the recent path.
+    c_uf = state.S_uf - state.S_u*state.S_f/state.S_1;
+    v_uu = state.S_uu - state.S_u^2/state.S_1;
+    state.K_R = min(max(prm.eta_K*(c_uf + prm.eps_u*state.S_1*prm.K_cal) ...
+        /(v_uu + prm.eps_u*state.S_1), 0), prm.K_max);
 end
 end
