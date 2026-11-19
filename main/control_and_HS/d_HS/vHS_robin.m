@@ -143,6 +143,13 @@ fprintf(['Force offset %.0f N: max |K_R difference| = %.3e k, ' ...
     max(abs(K1 - K2))/k_p(end), K1(end)/k_p(end), eta(3));
 assert(max(abs(K1 - K2)) < 1e-8*k_p(end), 'A force offset changed K_R.')
 assert(abs(K1(end)/k_p(end) - eta(3)) < 0.01, 'K_R missed the slope.')
+% A force without stiffness drives the fit to zero; K_R stops at K_min.
+s3 = step_HS_robin('state', prm_K);
+for j = 2:numel(t)
+    [~, s3] = step_HS_robin(0, u_p(j), 0, 0, 0, NaN, s3, prm_K);
+end
+fprintf('Zero stiffness: K_R end/K_min = %.4f\n', s3.K_R/prm_K.K_min);
+assert(s3.K_R == prm_K.K_min, 'K_R left the projection interval.')
 disp('vHS_robin checks passed.')
 
 function [dd, x1, K_R, M_R, u] = runHybrid(hs, prm, ag, k_p, m_p, c_p, ...

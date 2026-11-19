@@ -39,9 +39,11 @@ if ischar(varargin{1}) || isstring(varargin{1})
             dd = designRobin(varargin{2:end});
         case 'state'
             prm = varargin{2};
+            K_R = prm.eta_K*prm.K_cal;
+            if prm.adapt_K, K_R = min(max(K_R, prm.K_min), prm.K_max); end
             dd = struct('x', zeros(3*size(prm.K, 1), 1), ...
                 'M_R', prm.eta_M*prm.M0, 'C_R', prm.eta_C*prm.C0, ...
-                'K_R', prm.eta_K*prm.K_cal, ...
+                'K_R', K_R, ...
                 'S_1', 0, 'S_u', 0, 'S_f', 0, 'S_uf', 0, 'S_uu', 0, ...
                 'power', 0, 'count', 0);
         otherwise
@@ -73,7 +75,9 @@ prm = struct('dt', dt, 'n', hs.n_floor, 'M', hs.M, 'C', hs.C, ...
     ... % checking its corners at the expected delay (see vHS_robin.m).
     'M_bounds', [1 1]*M0, ...
     'M_phys', [0.65 1.35]*M0, ...  % admitted physical-mass estimates
-    'K_max', 1.25*K_cal, ...
+    'K_min', 0.3*K_cal, ...       % adaptive K_R projection [K_min, K_max]; a
+    'K_max', 1.25*K_cal, ...      % lower bound keeps K_R away from conventional
+    ...                           % coupling (switching condition, nonlinear paper)
     'update_n', round(0.02/dt), ... % h_R = 20 ms
     'T_M', 0.25, ...              % mass relaxation time [s]
     'Mdot_max', 0.5*M0, ...       % mass rate limit [kg/s]
@@ -212,6 +216,6 @@ if prm.adapt_K
     c_uf = state.S_uf - state.S_u*state.S_f/state.S_1;
     v_uu = state.S_uu - state.S_u^2/state.S_1;
     state.K_R = min(max(prm.eta_K*(c_uf + prm.eps_u*state.S_1*prm.K_cal) ...
-        /(v_uu + prm.eps_u*state.S_1), 0), prm.K_max);
+        /(v_uu + prm.eps_u*state.S_1), prm.K_min), prm.K_max);
 end
 end
