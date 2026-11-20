@@ -76,6 +76,36 @@
       "path": "input_signals/earthquakes.mat",
       "bytes": 1001759,
       "sha256": "9ddb93d89daa1538f533f73cfb1f9a95a8960185ef1614fe291b8eae1a63a4ba"
+    },
+    {
+      "path": "saved_results/tests/20261119/id_healthy_gain1_20261119_2009.mat",
+      "bytes": 186262312,
+      "sha256": "a3524e1c4a5654ba4c0c363e8c5ead13f8dff87a49acec80491e820489826c8f"
+    },
+    {
+      "path": "saved_results/tests/20261119/case1_notch_off_unstable_gain3p5_20261119_2052.mat",
+      "bytes": 147861425,
+      "sha256": "8ba8bc16b22cd6575e97084895c74beabf78ff884992d7a6991d8d8b55aeb149"
+    },
+    {
+      "path": "saved_results/tests/20261120/case2_notch_on_stable_gain3p5_20261120_1035.mat",
+      "bytes": 701845375,
+      "sha256": "8b9bf9b50845a7066a941871628cd30be39a49d284a6a13b756780e7b07d67d6"
+    },
+    {
+      "path": "saved_results/tests/20261120/case3_notch_on_osi_on_stable_gain3p5_20261120_1052.mat",
+      "bytes": 647693168,
+      "sha256": "852735e9055e4629332cea01cc1b5c2b12f46633c5014b2842a585bfc8c4fdaa"
+    },
+    {
+      "path": "saved_results/tests/20261120/stiff_notch_off_stable_gain3p5_i0p075_20261120_1125.mat",
+      "bytes": 629854197,
+      "sha256": "5ce3c500e9e962f14e6c9fba675cd70f9fbb93d0f1ecffdb87aef985952b4a20"
+    },
+    {
+      "path": "saved_results/tests/20261120/stiff_notch_on_stable_gain3p5_i0p075_20261120_1142.mat",
+      "bytes": 651219170,
+      "sha256": "987dcf6ab942151a73c8998d80d6f577fe8dc67431c7a40134461a07c045ea6d"
     }
   ]
 }

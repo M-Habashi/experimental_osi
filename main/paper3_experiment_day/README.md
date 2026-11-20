@@ -1,6 +1,7 @@
 # Paper 3 experiment day — SP4, 16 November 2026
 
 Start with the [checklist and file descriptions](docs/three_case_experiment_checklist.md).
+Current case settings, identification and predictions (19 Nov): [Paper 3 case parameters](docs/paper3_case_parameters.md), recreated by `results_analysis/paper3_case_parameters.m` from `saved_results/paper3_cases/`.
 Active parameter source: [editable MAT-file notch at the observed 35.3 Hz](docs/notch_parameters.md). Diagnostic gain is excluded from its design calculations.
 Current implementation: [outer-PID notch toggle and Simulink block](docs/pid_notch_implementation.md).
 Controller comparison: [four outer-PID open-loop cases, with/without notch](results_analysis/sp4_outer_pid_open_loop.md).
@@ -9,7 +10,9 @@ Use branch `Paper-3` in the primary checkout. The main script and actual
 Simulink model include the independent PID notch; helper equations are unchanged.
 This folder collects the experiment-day notes, findings, figures, calculation,
 and copies of the supporting data. The original recordings and identification
-files remain in the project's canonical `main/saved_results/` directories.
+files remain in the project's canonical `main/saved_results/` directories, except
+the six Paper 3 recordings (19 Nov healthy re-identification, Cases 1-3, stiff-range pair),
+moved and renamed into `saved_results/tests/`.
 
 ## Contents
 
