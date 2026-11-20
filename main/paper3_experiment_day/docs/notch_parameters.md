@@ -34,7 +34,8 @@ are needed. Saved physical results retain the loaded values in `result.hs`.
 
 This design has about 6.02 dB center attenuation, maximum magnitude deviation
 0.049 dB through 10 Hz, and 3.50 degrees of lag at 10 Hz. It remains second
-order. Physical stabilization and performance are not yet verified.
+order. Physically verified 19-20 Nov: it removes the softening instability
+without changing stiff-state tracking ([story](three_case_experiment_checklist.md)).
 
 Deployment: the 35.3 Hz application was built and loaded on target IISL, and
 the numerator/denominator were read back and matched to the MAT-derived

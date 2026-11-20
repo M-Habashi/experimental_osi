@@ -1,5 +1,8 @@
 # SP4 degraded identification versus Paper 1 prediction
 
+> Status 20 Nov: historical 16 Nov study (superseded healthy fit and original FEM).
+> Current results: [Paper 3 story](../docs/three_case_experiment_checklist.md).
+
 16 November 2026. The degraded recording is `SP4_plasticRange_id.mat`: BLWN
 about a physical setpoint approximately 2 mm from origin, identifying the
 second branch of the bilinear specimen response. Saved displacement signals

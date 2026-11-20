@@ -1,5 +1,8 @@
 # Outer PID loop: four SP4 cases
 
+> Status 20 Nov: historical 16 Nov study (superseded healthy fit and original FEM).
+> Current results: [Paper 3 story](../docs/three_case_experiment_checklist.md).
+
 The independent switch is now implemented in the Paper 3 worktree's actual
 main script and model; see [setup and verification](../docs/pid_notch_implementation.md).
 

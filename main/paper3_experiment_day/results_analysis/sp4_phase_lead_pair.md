@@ -1,5 +1,8 @@
 # SP4 matched comparison pair
 
+> Status 20 Nov: historical 16 Nov study (superseded healthy fit and original FEM).
+> Current results: [Paper 3 story](../docs/three_case_experiment_checklist.md).
+
 Historical design study: Paper 3 now compares the outer PID controller with
 and without its own notch. Phase-lead files are retained as legacy options.
 See the [implemented independent switch](../docs/pid_notch_implementation.md).

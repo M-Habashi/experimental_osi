@@ -23,6 +23,9 @@ trimCopy(fullfile(tests, '20261120', 'case2_notch_on_stable_gain3p5_20261120_103
 % Case 3: PID notch on and OSI adaptation on, otherwise identical to Case 2.
 trimCopy(fullfile(tests, '20261120', 'case3_notch_on_osi_on_stable_gain3p5_20261120_1052.mat'), ...
     [], fullfile(dst, 'case3_notch_on_osi_on_gain3p5_20261120_1052.mat'));
+% Case 4: PID notch off and OSI adaptation on, otherwise identical to Case 1.
+trimCopy(fullfile(tests, '20261120', 'case4_notch_off_osi_on_stable_gain3p5_20261120_1248.mat'), ...
+    [], fullfile(dst, 'case4_notch_off_osi_on_gain3p5_20261120_1248.mat'));
 % Stiff-range performance pair: intensity 0.075, notch off / on, OSI off.
 trimCopy(fullfile(tests, '20261120', 'stiff_notch_off_stable_gain3p5_i0p075_20261120_1125.mat'), ...
     [], fullfile(dst, 'stiff_notch_off_gain3p5_i0p075_20261120_1125.mat'));

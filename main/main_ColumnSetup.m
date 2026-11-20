@@ -60,8 +60,8 @@ hs = struct( ...
     'phase_lead_file', fullfile(projectFolder, 'saved_results', ...
     'phase_lead', 'pl_sp4_codesign.mat'), ... % Includes its 28 Hz band-stop.
     'earthquake_type', 'el_centro', ... % Field name in input_signals/earthquakes.mat.
-    'intensity_factor', 0.075, ...   % Earthquake acceleration multiplier. 0.075 0.5
-    'notch', true, ...             % true: notch on PID error; false: bypass.
+    'intensity_factor', 0.5, ...   % Earthquake acceleration multiplier. 0.075 0.5
+    'notch', false, ...             % true: notch on PID error; false: bypass.
     'num_notch', false, ...        % true: notch on HS numerical dd command (keep false with pl_sp4_codesign).
     'time_scale_factor', 20.0, ...  % >1 stretches earthquake time; dt is unchanged.
     'force_sign', 1.0, ...         % Use -1 only if force calibration requires it.

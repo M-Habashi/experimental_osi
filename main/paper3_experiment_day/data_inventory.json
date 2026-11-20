@@ -106,6 +106,11 @@
       "path": "saved_results/tests/20261120/stiff_notch_on_stable_gain3p5_i0p075_20261120_1142.mat",
       "bytes": 651219170,
       "sha256": "987dcf6ab942151a73c8998d80d6f577fe8dc67431c7a40134461a07c045ea6d"
+    },
+    {
+      "path": "saved_results/tests/20261120/case4_notch_off_osi_on_stable_gain3p5_20261120_1248.mat",
+      "bytes": 728151096,
+      "sha256": "ca53dda78ddba57666a046147de7d297c2302a09f490ef80be94c55e3242cf8f"
     }
   ]
 }

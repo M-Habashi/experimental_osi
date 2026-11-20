@@ -80,6 +80,35 @@ pre = c1.t >= c1.t(on) - 2 & c1.t < c1.t(on); slope = polyfit(dl(pre), fl(pre), 
 case1 = struct('onset_s', c1.t(on), 'gain', c1.diagnostic_gain(on), 'frequency_hz', Fw(jp), ...
     'slope_N_per_mm', slope(1), 'alpha', slope(1)/(k/1e3));
 
+%% 8) Measured run metrics, same definitions for every run
+% Active window: abs(dd - dd(1)) above 2% of its peak (scale-invariant). Tracking band 0.02-10 Hz holds the
+% earthquake content (time scale 20); its first 30 s exclude the start-up transient.
+runs = {'case1_notch_off_gain3p5_20261119_2052', 'case2_notch_on_gain3p5_20261120_1035', ...
+    'case3_notch_on_osi_on_gain3p5_20261120_1052', 'case4_notch_off_osi_on_gain3p5_20261120_1248', ...
+    'stiff_notch_off_gain3p5_i0p075_20261120_1125', 'stiff_notch_on_gain3p5_i0p075_20261120_1142'};
+[zb, pb, kb] = butter(2, [0.02 10]/(fs/2)); sb = zp2sos(zb, pb, kb);
+[bo, ao] = butter(4, [30 50]/(fs/2)); [bs, as] = butter(4, 10/(fs/2));
+bp = @(x) flipud(sosfilt(sb, flipud(sosfilt(sb, x))));
+M = zeros(numel(runs), 11);
+for n = 1:numel(runs)
+    r = load(fullfile(data, [runs{n} '.mat'])); r = r.result;
+    u = abs(r.dd - r.dd(1)); on = find(u > 0.02*max(u)); j = on(1):on(end); j30 = j(r.t(j) >= r.t(j(1)) + 30);
+    e = r.dd - r.dm; eb = bp(e); db = bp(r.dd);
+    osc = sqrt(movmean(filtfilt(bo, ao, r.dm).^2, round(fs)));
+    dl = filtfilt(bs, as, r.dm); fl = filtfilt(bs, as, r.fm); L = 2*fs; ks = [];
+    for s = j(1):L:j(end) - L
+        q = s:s + L - 1; if range(dl(q)) > 0.15, pk = polyfit(dl(q), fl(q), 1); ks(end+1) = pk(1); end %#ok<AGROW>
+    end
+    a1 = find(r.auth(j) < 0.99, 1); [amin, ia] = min(r.auth(j));
+    M(n, :) = [r.t(j(1)), 100*rms(e(j) - mean(e(j)))/rms(r.dd(j) - mean(r.dd(j))), ...
+        100*rms(eb(j30))/rms(db(j30)), 100*rms(eb(j))/rms(db(j)), max(osc(j)), median(ks), min(ks), max(abs(r.dm(j) - r.dm(j(1)))), ...
+        amin, r.t(j(ia)), NaN];
+    if ~isempty(a1), M(n, 11) = r.t(j(a1)); end
+end
+runs_table = array2table(M, 'RowNames', runs, 'VariableNames', {'onset_s', 'track_raw_pct', ...
+    'track_band_excl30_pct', 'track_band_all_pct', 'osc_30_50Hz_mm', 'slope_median_N_per_mm', 'slope_min_N_per_mm', ...
+    'peak_dm_mm', 'auth_min', 'auth_min_t_s', 'auth_first_below_099_s'});
+
 %% Report
 fprintf('\nIdentification: %s, %.1f-%.1f s, fs %g Hz, Hann %d, overlap %d\n', ...
     'id_healthy_gain1_20261119_2009_t085_218s.mat', id.t(1), id.t(end), fs, nf, ov);
@@ -95,13 +124,14 @@ for notch = 0:1
 end
 fprintf('Case 1: onset %.2f s, gain %.2f, %.1f Hz, slope %.0f N/mm (alpha %.2f)\n', ...
     case1.onset_s, case1.gain, case1.frequency_hz, case1.slope_N_per_mm, case1.alpha);
+disp(runs_table)
 
 result = struct('specimen', struct('k_N_per_m', k, 'm_kg', m, 'c_Ns_per_m', c, 'zeta', zeta), ...
     'actuator', p, 'fit_error_median', median(fitErr), 'fit_error_max', max(fitErr), ...
     'stiff_critical_gain', array2table(stiff, 'VariableNames', {'g_off','f_off_hz','g_on','f_on_hz'}, 'RowNames', {'outer_only','hs'}), ...
     'paper1_gain', g_case, 'paper1_alpha_f', array2table(paper1, 'VariableNames', {'alpha_cr','f_cr_hz'}, 'RowNames', {'notch_off','notch_on'}), ...
     'alpha', alpha, 'alpha_map_abs_z', squeeze(amap(:,:,1)), 'alpha_map_hz', squeeze(amap(:,:,2)), ...
-    'case1', case1, 'f_hz', f, 'H', H, 'Z_N_per_m', Z, 'coh_dm', cy, 'coh_dc', cu, 'coh_fm', cf);
+    'case1', case1, 'runs', runs_table, 'f_hz', f, 'H', H, 'Z_N_per_m', Z, 'coh_dm', cy, 'coh_dc', cu, 'coh_fm', cf);
 save(fullfile(package, 'outputs', 'paper3_case_parameters.mat'), 'result');
 end
 

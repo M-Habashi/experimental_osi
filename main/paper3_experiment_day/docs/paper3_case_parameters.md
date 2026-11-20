@@ -1,40 +1,45 @@
-# Paper 3 case parameters (SP4, 19 November 2026)
+# Paper 3 case parameters (SP4, 19-20 November 2026)
 
 All numbers below are recreated by
-[`results_analysis/paper3_case_parameters.m`](../results_analysis/paper3_case_parameters.m)
-from files in this folder only. It saves `outputs/paper3_case_parameters.mat`
-(one `result` struct). Inputs were copied and trimmed from the canonical project
-by [`results_analysis/paper3_extract_case_data.m`](../results_analysis/paper3_extract_case_data.m).
+[`paper3_case_parameters.m`](../results_analysis/paper3_case_parameters.m)
+from files in this folder only; it saves
+[`outputs/paper3_case_parameters.mat`](../outputs/paper3_case_parameters.mat)
+(one `result` struct). The trimmed inputs are written by
+[`paper3_extract_case_data.m`](../results_analysis/paper3_extract_case_data.m)
+from the full recordings. The story and file index are in
+[Paper 3 story](three_case_experiment_checklist.md).
 
 ## Input files (`saved_results/paper3_cases/`)
 
-| File in this folder | Full recording (`saved_results/`, original name) | Content |
+| File | Source | Content |
 | --- | --- | --- |
-| `id_healthy_gain1_20261119_2009_t085_218s.mat` | `tests/20261119/id_healthy_gain1_20261119_2009.mat` (was `20261119_2009_testing_OSI.mat`), 85-218 s | Healthy identification: diagnostic gain 1, numerical substructure active, broadband command, authority 1. |
-| `case1_notch_off_gain3p5_20261119_2052.mat` | `tests/20261119/case1_notch_off_unstable_gain3p5_20261119_2052.mat` (was `20261119_2052_testing_OSI.mat`), full record | Case 1 run: PID notch off, diagnostic gain 3.5. |
-| `case2_notch_on_gain3p5_20261120_1035.mat` | `tests/20261120/case2_notch_on_stable_gain3p5_20261120_1035.mat` (was `20261120_1035_testing_OSI.mat`), full record | Case 2 run: PID notch on, diagnostic gain 3.5. |
-| `case3_notch_on_osi_on_gain3p5_20261120_1052.mat` | `tests/20261120/case3_notch_on_osi_on_stable_gain3p5_20261120_1052.mat` (was `20261120_1052_testing_OSI.mat`), full record | Case 3 run: PID notch on, OSI adaptation on, diagnostic gain 3.5. |
-| `stiff_notch_off_gain3p5_i0p075_20261120_1125.mat` | `tests/20261120/stiff_notch_off_stable_gain3p5_i0p075_20261120_1125.mat` (was `20261120_1125_testing_OSI.mat`), full record | Stiff-range run: intensity 0.075, PID notch off, gain 3.5. |
-| `stiff_notch_on_gain3p5_i0p075_20261120_1142.mat` | `tests/20261120/stiff_notch_on_stable_gain3p5_i0p075_20261120_1142.mat` (was `20261120_1142_testing_OSI.mat`), full record | Stiff-range run: intensity 0.075, PID notch on, gain 3.5. |
-| `fem_numerical_rotation_fixed_damping10.mat` | `fem/fem_sp3_1o_rotfix.mat` | Case FEM: `fem_sp3_1o` with numerical interface rotation fixed, 10% Rayleigh damping. |
-| `lead_numerical_sp4_bandstop28hz.mat` | `phase_lead/pl_sp4_codesign.mat` | Reference lead on `dd`: SP4 lead x 28 Hz band-stop. |
-| `notch_pid_35p3hz.mat` | `controller_notch/notch_sp4.mat` | PID-error notch. |
-| `../exp_tf/tf_sp4_20261116_130910.mat` | same | Starting point only for the actuator fit. |
+| [`id_healthy_gain1_20261119_2009_t085_218s.mat`](../saved_results/paper3_cases/id_healthy_gain1_20261119_2009_t085_218s.mat) | `tests/20261119/id_healthy_gain1_20261119_2009.mat`, 85-218 s | Healthy identification: gain 1, numerical substructure active, broadband command, authority 1 |
+| [`case1_notch_off_gain3p5_20261119_2052.mat`](../saved_results/paper3_cases/case1_notch_off_gain3p5_20261119_2052.mat) | `tests/20261119/case1_notch_off_unstable_gain3p5_20261119_2052.mat` | Case 1: notch off, OSI off |
+| [`case2_notch_on_gain3p5_20261120_1035.mat`](../saved_results/paper3_cases/case2_notch_on_gain3p5_20261120_1035.mat) | `tests/20261120/case2_notch_on_stable_gain3p5_20261120_1035.mat` | Case 2: notch on, OSI off |
+| [`case3_notch_on_osi_on_gain3p5_20261120_1052.mat`](../saved_results/paper3_cases/case3_notch_on_osi_on_gain3p5_20261120_1052.mat) | `tests/20261120/case3_notch_on_osi_on_stable_gain3p5_20261120_1052.mat` | Case 3: notch on, OSI on |
+| [`case4_notch_off_osi_on_gain3p5_20261120_1248.mat`](../saved_results/paper3_cases/case4_notch_off_osi_on_gain3p5_20261120_1248.mat) | `tests/20261120/case4_notch_off_osi_on_stable_gain3p5_20261120_1248.mat` | Case 4: notch off, OSI on |
+| [`stiff_notch_off_gain3p5_i0p075_20261120_1125.mat`](../saved_results/paper3_cases/stiff_notch_off_gain3p5_i0p075_20261120_1125.mat) | `tests/20261120/stiff_notch_off_stable_gain3p5_i0p075_20261120_1125.mat` | Stiff pair: intensity 0.075, notch off |
+| [`stiff_notch_on_gain3p5_i0p075_20261120_1142.mat`](../saved_results/paper3_cases/stiff_notch_on_gain3p5_i0p075_20261120_1142.mat) | `tests/20261120/stiff_notch_on_stable_gain3p5_i0p075_20261120_1142.mat` | Stiff pair: intensity 0.075, notch on |
+| [`fem_numerical_rotation_fixed_damping10.mat`](../saved_results/paper3_cases/fem_numerical_rotation_fixed_damping10.mat) | `main/saved_results/fem/fem_sp3_1o_rotfix.mat` | Case FEM |
+| [`lead_numerical_sp4_bandstop28hz.mat`](../saved_results/paper3_cases/lead_numerical_sp4_bandstop28hz.mat) | `main/saved_results/phase_lead/pl_sp4_codesign.mat` | Reference lead on `dd`, PID gains |
+| [`notch_pid_35p3hz.mat`](../saved_results/paper3_cases/notch_pid_35p3hz.mat) | `main/saved_results/controller_notch/notch_sp4.mat` | PID-error notch |
+| [`../exp_tf/tf_sp4_20261116_130910.mat`](../saved_results/exp_tf/tf_sp4_20261116_130910.mat) | same | Starting point only for the actuator fit |
 
-The case runs load the canonical files (`fem_sp3_1o_rotfix.mat`,
-`pl_sp4_codesign.mat`, `notch_sp4.mat`) through `main_ColumnSetup.m`.
+Test sources are relative to this folder's `saved_results/` (full recordings,
+git-ignored, original names in the [story file index](three_case_experiment_checklist.md#recordings)).
+The runs load the canonical `main/saved_results/` files through `main_ColumnSetup.m`.
 
-## Case settings (identical in all cases except `hs.notch` and OSI adaptation)
+## Case settings (identical in all runs except `hs.notch`, OSI adaptation and intensity)
 
 | Parameter | Value |
 | --- | --- |
 | Numerical FEM | interface rotation fixed (K_ii 11,672 -> 53,777 N/mm), Rayleigh 10% on modes 1-2, `structural_model = 'linear'` |
 | Reference lead | SP4 lead (gain 0.867, zeros 4.21/500 Hz, poles 15.2/120 Hz) x band-stop 28 Hz, zeta 0.03/1.2; `hs.num_notch = false` |
 | PID | P 0.12, I 12, D 0.0012, N 512, forward Euler, dt 1/2048 s |
-| PID notch | 35.3 Hz, zeta_zero 0.1, zeta_pole 0.2, Tustin; `hs.notch` false (Case 1) / true (Case 2) |
-| Diagnostic gain | 3.5 for the whole earthquake (Case 1: 1.5 for the first 27 s of the record, before excitation; Case 2: 3.5 from the start) |
-| Excitation | El Centro x 0.5, time scale 20 (stiff-range pair: x 0.075) |
-| OSI | Cases 1-2: adaptation off, authority 1. Case 3: adaptation on (initial gain 1, min 0.1, NCF target 0.4, rho_detect 1.35) |
+| PID notch | 35.3 Hz, zeta_zero 0.1, zeta_pole 0.2, Tustin; `hs.notch` false (Cases 1, 4, stiff off) / true (Cases 2, 3, stiff on) |
+| Diagnostic gain | 3.5 during all shaking (Cases 1 and 4 start at 1.5 and switch at 26.9 s and 64.8 s, before the earthquake) |
+| Excitation | El Centro, time scale 20; intensity 0.5 (Cases 1-4) or 0.075 (stiff pair) |
+| OSI | Cases 1-2 and stiff pair: adaptation off, authority 1. Cases 3-4: adaptation on (initial gain 1, min 0.1, NCF target 0.4, rho_detect 1.35) |
 
 ## Identification method
 
@@ -71,33 +76,27 @@ Discrete closed loop versus alpha (stiffness alpha k, damping c sqrt(alpha), gai
 | Notch off, max abs(z) | 0.999 | 1.000 | 1.001 (37.3 Hz) | 1.002 (37.7 Hz) | 1.003 (38.1 Hz) | 1.004 (38.5 Hz) |
 | Notch on, max abs(z) | 0.996 | 0.996 | 0.996 | 0.996 | 0.996 | 0.996 |
 
-Case 1 measured (`case1_notch_off_gain3p5_20261119_2052.mat`): onset 159.57 s,
-gain 3.5, 38.9 Hz, preceding 2 s slope 2,577 N/mm (alpha 0.34). Prediction and
-measurement agree to within about 1 Hz.
+Case 1 onset (`case1_notch_off_gain3p5_20261119_2052.mat`, 20-60 Hz `dm`
+envelope): 159.57 s, gain 3.5, 38.9 Hz, preceding 2 s slope 2,577 N/mm
+(alpha 0.34). Prediction and measurement agree to within about 1 Hz.
 
-Case 2 measured (`case2_notch_on_gain3p5_20261120_1035.mat`): stable for the
-whole earthquake; the 2 s slope fell to about 1,720 N/mm (alpha 0.23). Max 1 s
-RMS of 30-50 Hz `dm` 0.009 mm (Case 1: 1.42 mm at onset).
+## Measured runs
 
-Case 3 measured (`case3_notch_on_osi_on_gain3p5_20261120_1052.mat`): stable;
-slope fell to about 1,770 N/mm. Authority first below 0.99 at 142.6 s, minimum
-0.43 at 184.4 s, back to 1 at the end; no trips. RMS(dd-dm)/RMS(dd) over the
-active earthquake: 7.39% (Case 2: 7.08%).
+Same definitions for every run (details in the
+[story](three_case_experiment_checklist.md#metric-definitions-and-the-exclusion-rule)).
+Active window: abs(`dd - dd(1)`) above 2% of its peak. Tracking:
+RMS(`dd - dm`)/RMS(`dd`), 0.02-10 Hz zero-phase band-pass, first 30 s of the
+active window excluded. Stability: maximum 1 s RMS of 30-50 Hz `dm`. Slope:
+2 s secant `fm`/`dm` after a 10 Hz low-pass, windows with `dm` range > 0.15 mm.
 
-Stiff-range pair (intensity 0.075, gain 3.5, OSI off), notch off / on:
-
-| Measure | Notch off (`1125`) | Notch on (`1142`) |
-| --- | --- | --- |
-| Stability | stable | stable |
-| Max 1 s RMS of 30-50 Hz `dm` | 0.0099 mm | 0.0085 mm |
-| 4 s secant slope, median (min) | 7,422 (6,429) N/mm | 7,447 (6,489) N/mm |
-| Peak abs(`dm`) | 0.63 mm | 0.74 mm |
-| RMS(dd-dm)/RMS(dd), 0.02-10 Hz, first 30 s excluded | 5.23% | 5.21% |
-| Same, first 60 s excluded | 4.91% | 5.00% |
-
-The first 30 s after command onset contain a start-up transient in both runs and
-are excluded. Unfiltered error (about 45% in both) is dominated by measurement
-noise above 10 Hz at this small amplitude.
+| Run | Onset (s) | Tracking (%) | Tracking, none excluded (%) | Unfiltered (%) | 30-50 Hz `dm` (mm) | Slope median / min (N/mm) | Peak `dm` (mm) | Authority min (s) | First below 0.99 (s) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Case 1 | 132.5 | unstable | | | 1.42 | | 3.89 | 1 | |
+| Case 2 | 212.4 | 3.82 | 3.79 | 6.98 | 0.0088 | 6,234 / 1,842 | 4.36 | 1 | |
+| Case 3 | 135.6 | 4.64 | 4.59 | 7.33 | 0.0093 | 6,212 / 1,821 | 4.43 | 0.43 (184.4) | 142.6 |
+| Case 4 | 216.7 | 7.99 | 7.89 | 9.53 | 0.0118 | 6,125 / 1,774 | 4.32 | 0.33 (542.0) | 217.3 |
+| Stiff, notch off | 42.9 | 5.20 | 28.7 | 46.7 | 0.0099 | 7,402 / 6,090 | 0.67 | 1 | |
+| Stiff, notch on | 66.1 | 5.14 | 11.5 | 45.6 | 0.0085 | 7,396 / 6,173 | 0.66 | 1 | |
 
 Assumptions: constant mass and damping ratio, stiffness scaled by alpha,
 healthy hydraulic parameters fixed. The numerical loop is excluded from the

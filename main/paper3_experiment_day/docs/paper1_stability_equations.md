@@ -93,3 +93,8 @@ instability boundary and oscillation frequency; a finite response-peak amplitude
 or the time required to reach that degradation level needs additional evidence.
 The notch center and width still need assessment over the expected degradation
 range.
+
+Applied 19 November with the gain-1 re-identification and the fitted actuator
+plus 6.64 ms delay: at diagnostic gain 3.5, notch off alpha_cr 0.857 at
+37.7 Hz; notch on, no physical root. Case 1 went unstable at 38.9 Hz. See
+[case parameters](paper3_case_parameters.md).
