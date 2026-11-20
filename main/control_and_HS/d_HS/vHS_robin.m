@@ -124,6 +124,32 @@ assert(d_n_NRMSE_pct(4) < d_n_NRMSE_pct(3), ...
     'Adaptive R-D did not improve on fixed R-D after damage.')
 assert(abs(K_R_end_over_k(4) - eta(3)) < 0.05, 'K_R did not track the damage.')
 assert(abs(M_R_end_over_m(5) - eta(1)) < 0.01, 'M_R did not converge to m_hat.')
+
+%% 4) The stiffness fit ignores a constant force offset (affine fit)
+% Prescribed motion of the softened specimen, with and without a force
+% offset (load-cell drift, residual deformation); K_R must not change.
+u_p = 1e-3*sin(2*pi*1.5*t).*(1 + t/t(end));
+f_p = k_p(end)*u_p;
+offset = 0.5*max(abs(f_p));
+[s1, s2] = deal(step_HS_robin('state', prm_K));
+[K1, K2] = deal(zeros(size(t)));
+for j = 2:numel(t)
+    [~, s1] = step_HS_robin(f_p(j), u_p(j), 0, 0, 0, NaN, s1, prm_K);
+    [~, s2] = step_HS_robin(f_p(j) + offset, u_p(j), 0, 0, 0, NaN, s2, prm_K);
+    [K1(j), K2(j)] = deal(s1.K_R, s2.K_R);
+end
+fprintf(['Force offset %.0f N: max |K_R difference| = %.3e k, ' ...
+    'K_R end/k = %.4f (eta_K = %.4f)\n'], offset, ...
+    max(abs(K1 - K2))/k_p(end), K1(end)/k_p(end), eta(3));
+assert(max(abs(K1 - K2)) < 1e-8*k_p(end), 'A force offset changed K_R.')
+assert(abs(K1(end)/k_p(end) - eta(3)) < 0.01, 'K_R missed the slope.')
+% A force without stiffness drives the fit to zero; K_R stops at K_min.
+s3 = step_HS_robin('state', prm_K);
+for j = 2:numel(t)
+    [~, s3] = step_HS_robin(0, u_p(j), 0, 0, 0, NaN, s3, prm_K);
+end
+fprintf('Zero stiffness: K_R end/K_min = %.4f\n', s3.K_R/prm_K.K_min);
+assert(s3.K_R == prm_K.K_min, 'K_R left the projection interval.')
 disp('vHS_robin checks passed.')
 
 function [dd, x1, K_R, M_R, u] = runHybrid(hs, prm, ag, k_p, m_p, c_p, ...
