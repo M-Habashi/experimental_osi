@@ -54,16 +54,16 @@ testname = test_type;
 %% Hybrid Simulation Parameters
 hs = struct( ...
     'fem_file', fullfile(projectFolder, 'saved_results', ...
-    'fem', 'fem_sp3_1o_rotfix.mat'), ... % Interface rotation fixed: stiff numerical loop.
+    'fem', 'fem_sp3_1o_roller.mat'), ... % Roller interface (rotation free), 10% damping. Paper 3 cases 1-4 used fem_sp3_1o_rotfix.mat.
     'exp_tf_file', fullfile(projectFolder, 'saved_results', ...
     'exp_tf', 'tf_sp4_20261116_130910.mat'), ...
     'phase_lead_file', fullfile(projectFolder, 'saved_results', ...
     'phase_lead', 'pl_sp4_codesign.mat'), ... % Includes its 28 Hz band-stop.
     'earthquake_type', 'el_centro', ... % Field name in input_signals/earthquakes.mat.
-    'intensity_factor', 0.5, ...   % Earthquake acceleration multiplier. 0.075 0.5
+    'intensity_factor', 0.25, ...   % Earthquake acceleration multiplier. 0.075 0.5
     'notch', false, ...             % true: notch on PID error; false: bypass.
     'num_notch', false, ...        % true: notch on HS numerical dd command (keep false with pl_sp4_codesign).
-    'time_scale_factor', 20.0, ...  % >1 stretches earthquake time; dt is unchanged.
+    'time_scale_factor', 1.0, ...  % >1 stretches earthquake time; dt is unchanged.
     'force_sign', 1.0, ...         % Use -1 only if force calibration requires it.
     'structural_model', 'linear', ... % 'linear' or 'bilinear_hinges'.
     'osi_gain_initial', 1.0, ...
