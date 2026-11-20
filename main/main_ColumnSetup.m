@@ -52,20 +52,24 @@ test_type = 'testing_OSI';
 testname = test_type;
 
 %% Hybrid Simulation Parameters
+% Match the active earthquake portion of 20261120_1555_testing_OSI.mat.
 hs = struct( ...
     'fem_file', fullfile(projectFolder, 'saved_results', ...
-    'fem', 'fem_sp3_1o.mat'), ...
+    'fem', 'fem_sp3_1o_roller.mat'), ...
     'exp_tf_file', fullfile(projectFolder, 'saved_results', ...
-    'exp_tf', 'sp3_tf_1o_20261109_113345.mat'), ...
+    'exp_tf', 'tf_sp4_20261116_130910.mat'), ...
     'phase_lead_file', fullfile(projectFolder, 'saved_results', ...
-    'phase_lead', 'pl_sp3_3.mat'), ...
+    'phase_lead', 'pl_sp4_codesign.mat'), ... % Includes the 28 Hz band-stop.
     'earthquake_type', 'el_centro', ... % Field name in input_signals/earthquakes.mat.
-    'intensity_factor', 0.5, ...   % Earthquake acceleration multiplier.
-    'time_scale_factor', 20.0, ...  % >1 stretches earthquake time; dt is unchanged.
+    'intensity_factor', 0.25, ...  % Earthquake acceleration multiplier.
+    'time_scale_factor', 1.0, ...  % >1 stretches earthquake time; dt is unchanged.
+    'command_gain', 2.0, ...      % Logged cd_gain once the earthquake was unpaused.
     'force_sign', 1.0, ...         % Use -1 only if force calibration requires it.
-    'structural_model', 'bilinear_hinges', ... % 'linear' or 'bilinear_hinges'.
+    'structural_model', 'linear', ... % 'linear' or 'bilinear_hinges'.
     'robin_enable', 1, ...         % 1 = Robin-Dirichlet HS block (step_HS_robin).
-    'robin_override', struct('adapt_M', false, 'adapt_K', true), ...
+    'robin_specimen_file', 'sp4.mat', ...
+    'robin_override', struct('eta_M', 0, 'eta_C', 0, 'eta_K', 0.9323, ...
+    'adapt_M', false, 'adapt_K', true), ...
     'osi_gain_initial', 1.0, ...
     'osi_gain_min', 0.1, ...
     'target_outer_ncf', 0.4, ... % SOL_OSI regulated NCF target.
@@ -92,6 +96,9 @@ t_ending = 5;                   % Smooth-stop transition time [s]
     load_saved_result_file(projectFolder, 'phase_lead', false, ...
     hs.phase_lead_file);
 phase_lead_tf = phase_lead_data.phase_lead_tf;
+if isfield(phase_lead_data, 'common_phase_lead_tf')
+    phase_lead_tf = phase_lead_data.common_phase_lead_tf;
+end
 phase_lead_tf_discrete = c2d(phase_lead_tf, dt, 'tustin');
 [phase_lead_num, phase_lead_den] = tfdata(phase_lead_tf_discrete, 'v');
 phase_lead_num = phase_lead_num(:).';
@@ -211,18 +218,13 @@ hs_force_sign_codegen = hs.force_sign;
 hs_nl = rmfield(prepare_hs_nonlinear(hs, dt, 'num'), {'kind', 'labels'});
 hs_nl_enable = double(is_hs_nonlinear(hs));
 
-% Robin-Dirichlet HS block: stiffness only (M_R = C_R = 0). Initial K_R is
-% designed for the identified tracking dd -> dm (HS Delay Compensator x
-% PID-actuator loop) over the paper's 0.5-25 Hz band in earthquake time.
+% Adaptive stiffness-only Robin operator, initialized at the fixed design.
+% The fixed design minimizes nominal peak numerical error over 0.5-25 Hz
+% at the recorded command gain of 2.
+% Use the physical SP4 calibration with the recording's SP3 roller FEM.
 specimen_si = specimen_params_si(load(fullfile(projectFolder, ...
-    'saved_results', 'specimens', [hs.fem.specimen_name '.mat'])));
-exp_tf_data = load(hs.exp_tf_file, 'H_dc_dm');
-robin_tracking = ss(phase_lead_tf_discrete)*feedback(ss(pid(pid_P, ...
-    pid_I, pid_D, 1/pid_N, dt, 'IFormula', 'ForwardEuler', 'DFormula', ...
-    'ForwardEuler'))*ss(c2d(exp_tf_data.H_dc_dm, dt, 'zoh')), 1);
-hs_robin = step_HS_robin('design', step_HS_robin('params', hs, dt, ...
-    specimen_si, hs.robin_override), robin_tracking, ...
-    [0.5 25]/hs.time_scale_factor, 0.02, [0; 0; 1]);
+    'saved_results', 'specimens', hs.robin_specimen_file)));
+hs_robin = step_HS_robin('params', hs, dt, specimen_si, hs.robin_override);
 hs_robin_enable = hs.robin_enable;
 
 sol_osi_setup = prepare_sol_osi_runtime(projectFolder, dt, hs, pid_values);
@@ -268,6 +270,7 @@ fprintf('  Earthquake type: %s\n', hs.earthquake_type)
 fprintf('  Intensity factor: %.6g\n', hs.intensity_factor)
 fprintf('  Earthquake duration: %.6g s\n', hs.time(end))
 fprintf('  Time scale factor: %.6g\n', hs.time_scale_factor)
+fprintf('  Command gain: %.6g\n', hs.command_gain)
 [~, fem_name, fem_ext] = fileparts(hs.fem_file);
 [~, phase_lead_name, phase_lead_ext] = fileparts(phase_lead_file);
 [~, exp_tf_name, exp_tf_ext] = fileparts(exp_tf_file);
@@ -293,6 +296,7 @@ end
 tg = connect_speedgoat_target;
 fileLogRunCountBefore = height(list(tg.FileLog));
 load_system(model);
+set_param([model '/columnSetup/Constant'], 'Value', num2str(hs.command_gain));
 osi_gain_enable_parameter = Simulink.Parameter(0);
 osi_gain_enable_parameter.CoderInfo.StorageClass = 'ExportedGlobal';
 assignin(get_param(model, 'ModelWorkspace'), ...
