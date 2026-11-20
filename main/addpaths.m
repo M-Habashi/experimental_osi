@@ -6,7 +6,7 @@ project_root = fileparts(mfilename('fullpath'));
 project_folders = strsplit(genpath(project_root), pathsep);
 project_folders = project_folders(~cellfun('isempty', project_folders));
 
-excluded = {'docs', 'saved_results', 'slprj'};
+excluded = {'.codex', 'docs', 'saved_results', 'slprj'};
 for i = 1:numel(excluded)
     excluded_root = fullfile(project_root, excluded{i});
     is_excluded = strcmpi(project_folders, excluded_root) | ...
