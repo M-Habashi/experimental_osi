@@ -15,7 +15,7 @@
 %      above. It recomputes the same design at start-up.
 % Units: SI unless stated; displacements in the records are in mm.
 
-clearvars; clc
+clearvars -except prepare_overrides
 script_dir = fileparts(mfilename('fullpath'));
 project_root = fileparts(fileparts(script_dir));
 addpath(project_root);
@@ -35,11 +35,15 @@ intensity_factor = 0.25;
 time_scale_factor = 1.0;
 force_sign = 1.0;
 admitted = [];                % tangent range admitted before the test [N/m]; [] = [0 1.3]*k0
+if exist('prepare_overrides', 'var')  % struct of the inputs above (scripted runs)
+    names = fieldnames(prepare_overrides);
+    for i = 1:numel(names), eval([names{i} ' = prepare_overrides.(names{i});']); end
+end
 
 assert(~isempty(pretest_file) && ~isempty(specimen_file) && ...
     ~isempty(exp_tf_file) && ~isempty(fem_file), ...
     'Set pretest_file, specimen_file, exp_tf_file, and fem_file.')
-saved = @(folder, name) fullfile(project_root, 'saved_results', folder, name);
+saved = @(folder, name) savedFile(project_root, folder, name);
 dt = 1/2048;
 
 %% MODELS OF THE TEST
@@ -117,3 +121,8 @@ save(out_file, 'pretest_file', 'pretest_window', 'pretest_gain', 'specimen_file'
     'K_R0', 'fixed_override', 'adaptive_override', 'fixed_report', ...
     'adaptive_report', 'checks')
 fprintf('Design saved: %s\n', out_file)
+
+function file = savedFile(project_root, folder, name)
+% A full path is used as given; otherwise saved_results/<folder>/<name>.
+if isfile(name), file = name; else, file = fullfile(project_root, 'saved_results', folder, name); end
+end

@@ -8,13 +8,14 @@
 %    tracked through a 27 ms delay), and conventional coupling with zero
 %    Robin operator equals step_HS.
 
-clearvars; clc
+clearvars -except test_file_override
 script_dir = fileparts(mfilename('fullpath'));
 project_root = fileparts(fileparts(script_dir));
 addpath(project_root);
 addpaths();
 test_file = fullfile(project_root, 'saved_results', 'tests', '20261118', ...
     'tao-tests-20261120', '20261120_1623_Tao_Adaptive.mat');
+if exist('test_file_override', 'var'), test_file = test_file_override; end
 
 %% 1-2) Recorded adaptive test of 20 Nov 2026
 if isfile(test_file)

@@ -19,6 +19,10 @@ function [K_R, report] = design_robin_fixed(ns, opts)
 %     (2) tau_cr(K_R) >= tau_cr(0) and >= opts.added_delay (any delay
 %         expected to be added to the measured loop),
 %     (3) a positive clearance for the admitted tangent range.
+%   If (1) leaves only K_R = 0 (every Robin stiffness lowers the margin of a
+%   conventional loop that is already free of delay crossings), (1) is
+%   replaced by rho(K_R) >= max |k - k0| over the admitted range, the
+%   small-gain requirement for the admitted specimen change.
 %
 %   opts: band [Hz] ([0.5 25]), admitted [N/m] ([0 1.3]*ns.k0), c_visc
 %   [N*s/m] ([0 ns.c]), m [kg] (ns.m), added_delay [s] (0), K_max_grid [N/m]
@@ -48,15 +52,25 @@ peak = [rows.peak_EN]';
 peak_ok = peak;
 peak_ok(~ok) = Inf;
 [~, i_design] = min(peak_ok);
+rule = 'margin of conventional coupling';
+if K_grid(i_design) == 0
+    ok = [rows.margin]' >= max(abs(admitted - ns.k0)) & ...
+        [rows.tau_cr]' >= max(conv.tau_cr, added_delay) & [rows.clearance]' > 0;
+    peak_ok = peak;
+    peak_ok(~ok) = Inf;
+    [~, i_design] = min(peak_ok);
+    rule = 'margin above the admitted tangent change (fallback)';
+end
 [~, i_free] = min(peak);
 K_R = K_grid(i_design);
-report = struct('K_grid', K_grid, 'rows', rows, 'admissible', ok, ...
+report = struct('rule', rule, 'K_grid', K_grid, 'rows', rows, 'admissible', ok, ...
     'conventional', conv, 'unconstrained', rows(i_free), 'design', rows(i_design), ...
     'band', band, 'admitted', admitted, 'c_visc', c_visc, 'k0', ns.k0);
 if option(opts, 'verbose', true)
     fprintf('\nFixed Robin stiffness from the pretest (k0 = %.3f kN/mm)\n', ns.k0/1e6)
     fprintf('  admitted tangent range %.2f to %.2f kN/mm, design band %.3g-%.3g Hz\n', ...
         admitted/1e6, band)
+    fprintf('  margin requirement: %s\n', rule)
     fprintf('  %-26s %9s %9s %10s %10s %9s\n', '', 'K_R', 'rho', 'tau_cr', ...
         'clearance', 'max|EN|')
     fprintf('  %-26s %9s %9s %10s %10s %9s\n', '', '[kN/mm]', '[kN/mm]', '[ms]', ...
