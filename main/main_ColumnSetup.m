@@ -444,6 +444,18 @@ result = struct('t', t, 'dd', dd, 'dc', dc, 'dm', dm, ...
 if exist('hs', 'var')
     result.hs = hs;
 end
+if exist('hs_robin', 'var')
+    % Robin operator of the run: replay_hs_robin reconstructs u_I^N and K_R.
+    result.hs_robin = hs_robin;
+    result.hs_robin_enable = hs_robin_enable;
+end
+if exist('robin_ns', 'var')
+    % Pretest nominal state and design of the Robin operator.
+    result.robin_nominal = struct('k0', robin_ns.k0, 'm', robin_ns.m, ...
+        'c', robin_ns.c, 'pretest_file', hs.robin_pretest_file);
+    result.robin_design = struct('fixed', robin_fixed_report.design, ...
+        'adaptive', robin_adaptive_report, 'override', hs.robin_override);
+end
 if exist('phase_lead_file', 'var')
     result.phase_lead_file = phase_lead_file;
 end

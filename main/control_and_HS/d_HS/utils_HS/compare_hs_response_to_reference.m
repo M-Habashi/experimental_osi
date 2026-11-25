@@ -1,7 +1,15 @@
 function [metric_table, comparison] = compare_hs_response_to_reference( ...
         fem, recorded_data, earthquake_type, intensity_factor, ...
         time_scale_factor, force_sign, options)
-%COMPARE_HS_RESPONSE_TO_REFERENCE Compare HS data with full FEM reference.
+%COMPARE_HS_RESPONSE_TO_REFERENCE Compare HS data with the reference structure.
+% The test is replayed with its own coupling: step_HS for conventional
+% coupling, the Robin-Dirichlet block (replay_hs_robin) otherwise. For the
+% linear structural model, the reference is the hybrid partition integrated
+% as one structure: the numerical substructure with the specimen
+% m s^2 + c s + k at the interface (the pretest values saved with the run,
+% the specimen file, or options.reference_specimen with fields mass,
+% damping, stiffness). It is exact for a linear specimen; for a nonlinear
+% specimen the post-test reference needs a fitted specimen law.
 % Units:
 %   recorded data: t [s], dm [mm], fm [N].
 %   FEM/reference displacements are compared in [m].
@@ -69,14 +77,34 @@ hs = buildHsModel(fem, earthquake_type, intensity_factor, ...
 if isfield(data, 'hs') && isfield(data.hs, 'structural_model')
     hs.structural_model = data.hs.structural_model;
 end
-[u_test, u_control_test_mm, effective_time, a_test, hinges_test] = replayRecordedHs( ...
-    fm, pause_enable, dt, hs);
-[u_reference, u_control_reference, a_reference, hinges_reference] = fullReferenceAtEffectiveTime( ...
-    fem.ref, hs, effective_time, dt);
+for name = {'robin_enable', 'robin_specimen_file', 'robin_override'}
+    if isfield(data, 'hs') && isfield(data.hs, name{1})
+        hs.(name{1}) = data.hs.(name{1});
+    end
+end
+prm = robin_params_of_result(data, hs, project_folder);
+if isempty(prm)
+    [u_test, u_control_test_mm, effective_time, a_test, hinges_test] = replayRecordedHs( ...
+        fm, pause_enable, dt, hs);
+else
+    replay = replay_hs_robin(data, hs, prm);
+    [u_test, u_control_test_mm, effective_time, a_test] = deal(replay.x_n_m(1:n, :), ...
+        replay.d_n_mm(1:n), replay.effective_time(1:n), replay.a_n(1:n, :));
+    hinges_test = elastic_hs_hinges(hs.fem.num, true, u_test, u_control_test_mm, ...
+        effective_time/hs.time_scale_factor);
+end
+if is_hs_nonlinear(hs)
+    [u_reference, u_control_reference, a_reference, hinges_reference] = fullReferenceAtEffectiveTime( ...
+        fem.ref, hs, effective_time, dt);
+else
+    [u_reference, u_control_reference, a_reference, hinges_reference] = hybridReferenceAtEffectiveTime( ...
+        hs, referenceSpecimen(data, hs, fem, options, project_folder), effective_time, dt);
+end
 ag = interp1(hs.time, hs.ag, effective_time/hs.time_scale_factor, 'linear', 0);
 base_shear_test = hs_base_shear(hs.M, ...
     fem.num.influence(fem.num.floor_dofs), a_test, ag);
-base_shear_reference = hs_base_shear(fem.ref.M, fem.ref.influence, a_reference, ag);
+base_shear_reference = hs_base_shear(hs.M, ...
+    fem.num.influence(fem.num.floor_dofs), a_reference, ag);
 if plot_enabled
     plotStructuralReferenceComparison(effective_time, u_test, u_reference, ...
         pause_enable, dm, dm_filtfilt, u_control_test_mm, ...
@@ -88,7 +116,7 @@ if plot_enabled
     if ~any(active), active = true(size(pause_enable)); end
     plot_hs_roof_hysteresis([u_reference(active, end), u_test(active, end)], ...
         [base_shear_reference(active), base_shear_test(active)], ...
-        {'Full FEM', 'HS (reconstructed)'});
+        {'Reference', 'HS (reconstructed)'});
 end
 
 running = pause_enable == 0;
@@ -96,7 +124,7 @@ metric = validation_metrics();
 u_control_reference_mm = 1000*u_control_reference;
 % J1-J3 compare measured dm to d_n from the numerical sub.
 % J4-J6 compare x1_n/x2_n/x3_n numerical sub floors to x1_r/x2_r/x3_r.
-% J7 compares measured dm to d_r as NMSE.
+% J7 compares measured dm to the reference interface displacement d_r as NMSE.
 values = [ ...
     metric.J1(dm_filtfilt(running), u_control_test_mm(running), dt); ...
     metric.J2(dm_filtfilt(running), u_control_test_mm(running)); ...
@@ -310,6 +338,50 @@ if ~nonlinear
 end
 end
 
+function specimen = referenceSpecimen(data, hs, fem, options, project_folder)
+% Specimen of the reference: options, the pretest of the run, the specimen
+% file of the run, or the stiffness the FEM was calibrated to.
+if isfield(options, 'reference_specimen')
+    specimen = options.reference_specimen;
+elseif isfield(data, 'robin_nominal')
+    specimen = struct('mass', data.robin_nominal.m, ...
+        'damping', data.robin_nominal.c, 'stiffness', data.robin_nominal.k0);
+elseif isfield(hs, 'robin_specimen_file') && ~isempty(hs.robin_specimen_file)
+    specimen = specimen_params_si(load(fullfile(project_folder, ...
+        'saved_results', 'specimens', hs.robin_specimen_file)));
+else
+    specimen = struct('mass', 0, 'damping', 0, ...
+        'stiffness', fem.num.experimental_k);
+end
+end
+
+function [u_reference, u_control_reference, a_reference, hinges] = hybridReferenceAtEffectiveTime(hs, ...
+        specimen, effective_time, dt)
+% Numerical substructure + specimen at the interface, one structure: the
+% Robin operator equal to the specimen and a zero residual (vHS_robin.m).
+prm = step_HS_robin('params', hs, dt, specimen, struct('eta_M', 1, ...
+    'eta_C', 1, 'eta_K', 1, 'adapt_M', false, 'adapt_K', false));
+reference_time = (0:round(max(effective_time)/dt))'*dt;
+ag = interp1(hs.time, hs.ag, (reference_time + dt)/hs.time_scale_factor, 'linear', 0);
+state = step_HS_robin('state', prm);
+n = numel(reference_time);
+n_dof = size(prm.K, 1);
+u_grid = zeros(n, hs.n_floor);
+a_grid = zeros(n, hs.n_floor);
+d_grid = zeros(n, 1);
+for k = 2:n
+    [d_grid(k), state] = step_HS_robin(0, 0, 0, 0, ag(k - 1), NaN, state, prm);
+    u_grid(k, :) = state.x(1:hs.n_floor)';
+    a_grid(k, :) = state.x(2*n_dof + (1:hs.n_floor))';
+end
+index = round(effective_time/dt) + 1;
+u_reference = u_grid(index, :);
+u_control_reference = d_grid(index)/1000;
+a_reference = a_grid(index, :);
+hinges = elastic_hs_hinges(hs.fem.num, true, u_grid, d_grid, ...
+    reference_time/hs.time_scale_factor);
+end
+
 function [u_reference, u_control_reference, a_reference, hinges] = fullReferenceAtEffectiveTime(fem_ref, hs, ...
         effective_time, dt)
 reference_time = (0:round(max(effective_time)/dt))'*dt;
@@ -386,7 +458,7 @@ for floor_id = 1:3
 end
 ax = nexttile;
 plot(ax, x, base_shear_reference(active)/1000, '--', ...
-    'Color', colors.purple, 'LineWidth', 2.2, 'DisplayName', 'Full FEM');
+    'Color', colors.purple, 'LineWidth', 2.2, 'DisplayName', 'Reference');
 hold(ax, 'on')
 plot(ax, x, base_shear_test(active)/1000, '-', ...
     'Color', colors.purple, 'LineWidth', 1.2, 'DisplayName', 'HS (reconstructed)');

@@ -104,7 +104,14 @@ fprintf(' %.12g', base_rotation_k_by_column);
 fprintf('\n\n');
 
 floor_mass_kg = [20121; 20121; 18426];
-damping_ratio = 0.03;
+% Rayleigh damping in modes 1 and 2 of the reference frame. 5% is the usual
+% structural damping of a steel moment frame in seismic analysis; with the
+% SP4 tracking loop, 3% left conventional coupling a critical time delay of
+% about 11 ms and 2% left almost none (nonlinear R-D paper, vRTHS check).
+damping_ratio = 0.05;
+if exist('damping_ratio_override', 'var') && ~isempty(damping_ratio_override)
+    damping_ratio = damping_ratio_override;
+end
 damping = struct('type', 'rayleigh', ...
     'target_ratio', damping_ratio, 'fit_modes', [1 2]);
 height_result = findFirstModeInflectionHeight( ...
