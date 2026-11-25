@@ -70,6 +70,13 @@ hs = struct( ...
     'robin_specimen_file', 'sp4.mat', ...
     'robin_override', struct('eta_M', 0, 'eta_C', 0, 'eta_K', 0.9323, ...
     'adapt_M', false, 'adapt_K', true), ...
+    ... % Robin operator designed from a pretest (design_robin_fixed/adaptive).
+    ... % The pretest is a white-noise test on dd with the specimen attached;
+    ... % exp_tf_file must then be the sys_id model fitted to that pretest.
+    'robin_pretest_file', '', ...  % '' keeps robin_override.
+    'robin_pretest_window', [], ... % [t0 t1] s of its stationary part; [] = all.
+    'robin_pretest_gain', 1.0, ... % Command gain during the pretest.
+    'robin_design', 'adaptive', ... % 'fixed' or 'adaptive' designed operator.
     'osi_gain_initial', 1.0, ...
     'osi_gain_min', 0.1, ...
     'target_outer_ncf', 0.4, ... % SOL_OSI regulated NCF target.
@@ -218,9 +225,10 @@ hs_force_sign_codegen = hs.force_sign;
 hs_nl = rmfield(prepare_hs_nonlinear(hs, dt, 'num'), {'kind', 'labels'});
 hs_nl_enable = double(is_hs_nonlinear(hs));
 
-% Adaptive stiffness-only Robin operator, initialized at the fixed design.
-% The fixed design minimizes nominal peak numerical error over 0.5-25 Hz
-% at the recorded command gain of 2.
+% Stiffness-only Robin operator. Without a pretest file, robin_override
+% (eta_K times the specimen-file stiffness, adaptive in [0.3, 1.25] K_cal)
+% is used as recorded. With hs.robin_pretest_file, the operator is designed
+% from the pretest below (nonlinear R-D paper, design procedure).
 % Use the physical SP4 calibration with the recording's SP3 roller FEM.
 specimen_si = specimen_params_si(load(fullfile(projectFolder, ...
     'saved_results', 'specimens', hs.robin_specimen_file)));
@@ -231,6 +239,38 @@ sol_osi_setup = prepare_sol_osi_runtime(projectFolder, dt, hs, pid_values);
 exp_tf_file = sol_osi_setup.exp_tf_file;
 exp_tf_name = sol_osi_setup.exp_tf_name;
 fprintf('exp_tf loaded: %s\n', exp_tf_file)
+
+% Robin operator from the pretest: measured nominal state, force path of the
+% exp_tf model, and the test's FEM, lead filter, and command gain.
+if ~isempty(hs.robin_pretest_file)
+    pretest = load_saved_result_file(projectFolder, 'tests', false, ...
+        hs.robin_pretest_file);
+    keep_pretest = true(size(pretest.t(:)));
+    if ~isempty(hs.robin_pretest_window)
+        keep_pretest = pretest.t(:) >= hs.robin_pretest_window(1) & ...
+            pretest.t(:) <= hs.robin_pretest_window(2);
+    end
+    pretest_record = struct('dd', pretest.dd(keep_pretest), ...
+        'dm', pretest.dm(keep_pretest), 'fm', pretest.fm(keep_pretest), ...
+        't', pretest.t(keep_pretest), 'g_id', hs.robin_pretest_gain);
+    exp_tf_model = load(exp_tf_file, 'parametric_identification');
+    robin_ns = robin_nominal_state(pretest_record, ...
+        exp_tf_model.parametric_identification.identified_params, hs_robin, ...
+        struct('num', phase_lead_num, 'den', phase_lead_den), hs.command_gain);
+    [robin_K_R0, robin_fixed_report] = design_robin_fixed(robin_ns);
+    [robin_adaptive_override, robin_adaptive_report] = ...
+        design_robin_adaptive(robin_ns, robin_K_R0);
+    switch lower(hs.robin_design)
+        case 'fixed'
+            hs.robin_override = struct('eta_M', 0, 'eta_C', 0, 'eta_K', 1, ...
+                'adapt_M', false, 'adapt_K', false, 'K_cal', robin_K_R0);
+        case 'adaptive'
+            hs.robin_override = robin_adaptive_override;
+        otherwise
+            error('hs.robin_design must be ''fixed'' or ''adaptive''.')
+    end
+    hs_robin = step_HS_robin('params', hs, dt, specimen_si, hs.robin_override);
+end
 fprintf(['SOL_OSI setup: step %.3g s, target %.3g, initial %.3g, ' ...
     'minimum %.3g, publish delay %d ticks\n'], sol_osi_setup.cfg.step_s, ...
     sol_osi_setup.target_outer_ncf, sol_osi_setup.gain_initial, ...
@@ -285,6 +325,9 @@ fprintf('  PID controller: P = %.6g, I = %.6g, D = %.6g, N = %.6g\n', ...
 fprintf(['  Robin-Dirichlet block: enable %d, L* = (%.4f M0, %.4f C0, ' ...
     '%.4f K0), adapt M/K = %d/%d\n'], hs_robin_enable, hs_robin.eta_M, ...
     hs_robin.eta_C, hs_robin.eta_K, hs_robin.adapt_M, hs_robin.adapt_K)
+fprintf(['  Robin stiffness: K_cal = %.4g kN/mm, initial K_R = %.4g kN/mm, ' ...
+    'adaptive range [%.4g, %.4g] kN/mm\n'], hs_robin.K_cal/1e6, ...
+    hs_robin.eta_K*hs_robin.K_cal/1e6, hs_robin.K_min/1e6, hs_robin.K_max/1e6)
 continue_prompt = sprintf(['Continue and open Simulink? ' ...
     '(OSI minimum factor %.6g) (y/n): '], sol_osi_setup.gain_min);
 continue_response = lower(strtrim(input(continue_prompt, 's')));
@@ -400,6 +443,18 @@ result = struct('t', t, 'dd', dd, 'dc', dc, 'dm', dm, ...
     'file', [timestamp '_' testname '.mat']);
 if exist('hs', 'var')
     result.hs = hs;
+end
+if exist('hs_robin', 'var')
+    % Robin operator of the run: replay_hs_robin reconstructs u_I^N and K_R.
+    result.hs_robin = hs_robin;
+    result.hs_robin_enable = hs_robin_enable;
+end
+if exist('robin_ns', 'var')
+    % Pretest nominal state and design of the Robin operator.
+    result.robin_nominal = struct('k0', robin_ns.k0, 'm', robin_ns.m, ...
+        'c', robin_ns.c, 'pretest_file', hs.robin_pretest_file);
+    result.robin_design = struct('fixed', robin_fixed_report.design, ...
+        'adaptive', robin_adaptive_report, 'override', hs.robin_override);
 end
 if exist('phase_lead_file', 'var')
     result.phase_lead_file = phase_lead_file;

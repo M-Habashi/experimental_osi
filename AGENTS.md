@@ -54,6 +54,15 @@
 - `d_r`: full/reference FEM response at the interface/control point.
 - `d_n` or `dd`: numerical-substructure interface/control-point displacement command.
 
+## Robin-Dirichlet Tests (branch `tao_remote` only)
+
+- Only `tao_remote` uses Robin-Dirichlet (R-D) coupling. Keep the R-D files (`step_HS_robin`, `hybrid_simulation_robin_runtime`, `robin_*`, `design_robin_*`, `replay_hs_robin`, `vrths_robin`, `build_hs_model`, `prepare_robin_test`, `check_robin_tools`) on this branch; do not merge or copy them into other branches.
+- After a new identification (pretest) of a specimen, follow `main/docs/procedure/New_specimen_workflow.md` step by step: what to run, what to check, and which `main_ColumnSetup.m` fields to update.
+- Design rules come from the pretest only: no low-pass filter on the Robin term, the adaptive interval is not narrowed for stability, and structural damping is 5% Rayleigh in modes 1-2 unless the user says otherwise.
+- Call `tau_cr` the critical time delay and `|L| = 1` crossings delay crossings.
+- After changing any R-D code, run `main/control_and_HS/d_HS/check_robin_tools.m`; it must end with "All checks passed".
+- In a MATLAB session shared with the user, run scripts inside a function (so `clearvars` does not clear the user's workspace) and restore the path afterwards.
+
 ## Deferred Detailed Instructions
 
 - Load `docs/MATLAB_MCP_TOOLING.md` only immediately before doing work that involves MATLAB, Simulink, Speedgoat/SLRT, SAP/FEM workflows, MCP tool execution, browser/uncodixify recovery, GitHub CLI work, or recovery from a recurring command/tool failure.

@@ -67,7 +67,7 @@ prm = struct('dt', dt, 'n', hs.n_floor, 'M', hs.M, 'C', hs.C, ...
     'force_sign', hs.force_sign, ...
     'M0', M0, ...                 % nominal physical interface mass [kg]
     'C0', specimen_si.damping, ... % nominal physical damping [N*s/m]
-    'K_cal', K_cal, ...           % independently fitted stiffness [N/m]
+    'K_cal', K_cal, ...           % calibration: regularization target [N/m]
     'eta_M', 1, 'eta_C', 0, 'eta_K', 1, ...
     'adapt_M', false, 'adapt_K', true, ... % both false = fixed R-D
     ... % Robin mass box for adapt_M. Closed by default: the stable M_R
@@ -75,9 +75,10 @@ prm = struct('dt', dt, 'n', hs.n_floor, 'M', hs.M, 'C', hs.C, ...
     ... % checking its corners at the expected delay (see vHS_robin.m).
     'M_bounds', [1 1]*M0, ...
     'M_phys', [0.65 1.35]*M0, ...  % admitted physical-mass estimates
-    'K_min', 0.3*K_cal, ...       % adaptive K_R projection [K_min, K_max]; a
-    'K_max', 1.25*K_cal, ...      % lower bound keeps K_R away from conventional
-    ...                           % coupling (switching condition, nonlinear paper)
+    'K_min', 0.3*K_cal, ...       % adaptive K_R projection [K_min, K_max];
+    'K_max', 1.25*K_cal, ...      % design_robin_adaptive sets K_cal, the upper
+    ...                           % bound 1.25 k0, and the lower bound from the
+    ...                           % scaled small-gain condition (nonlinear paper)
     'update_n', round(0.02/dt), ... % h_R = 20 ms
     'T_M', 0.25, ...              % mass relaxation time [s]
     'Mdot_max', 0.5*M0, ...       % mass rate limit [kg/s]

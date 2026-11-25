@@ -5,7 +5,8 @@ function metric = validation_metrics()
 % Indicator meanings:
 %   J1-J3: measured dm against d_n, the numerical sub control point.
 %   J4-J6: x1_n/x2_n/x3_n numerical sub response against x1_r/x2_r/x3_r.
-%   J7: measured dm against d_r, the full FEM control point, reported as NMSE.
+%   J7: measured dm against d_r, the reference control point (interface),
+%       reported as NMSE (a squared ratio, unlike the RMS ratios J2-J6).
 
 metric.J1 = @J1_tracking_delay;
 metric.J2 = @J2_normalized_tracking_rms;

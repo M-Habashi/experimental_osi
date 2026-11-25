@@ -1,5 +1,8 @@
 function numerical_sub = recompute_numerical_sub_response(result)
 %RECOMPUTE_NUMERICAL_SUB_RESPONSE Recompute d_n by stepping from logged fm.
+% Conventional coupling steps step_HS with the logged fm. A Robin-Dirichlet
+% test replays its own block (replay_hs_robin) with the logged fm, dm, am,
+% and m_hat, which also returns the Robin stiffness K_R.
 % Units: result.t/effective_time [s], result.fm [N], d_n [mm], x_n [m].
 
 project_folder = fileparts(fileparts(fileparts(mfilename('fullpath'))));
@@ -30,10 +33,21 @@ fm = fm(1:n);
 pause_enable = pause_enable(1:n);
 
 hs = prepareHs(result.hs, project_folder);
-[x_n, d_n, effective_time] = replayNumericalSub(fm, pause_enable, dt, hs);
+prm = robin_params_of_result(result, hs, project_folder);
+if isempty(prm)
+    [x_n, d_n, effective_time] = replayNumericalSub(fm, pause_enable, dt, hs);
+    K_R = zeros(n, 1);
+else
+    replay = replay_hs_robin(result, hs, prm);
+    m = min(n, numel(replay.d_n_mm));
+    [t, pause_enable] = deal(t(1:m), pause_enable(1:m));
+    [x_n, d_n, effective_time, K_R] = deal(replay.x_n_m(1:m, :), ...
+        replay.d_n_mm(1:m), replay.effective_time(1:m), replay.K_R(1:m));
+end
 
 numerical_sub = struct('t', t, 'effective_time', effective_time, ...
-    'pause_enable', pause_enable, 'd_n_mm', d_n, 'x_n_m', x_n);
+    'pause_enable', pause_enable, 'd_n_mm', d_n, 'x_n_m', x_n, ...
+    'K_R', K_R, 'robin', ~isempty(prm));
 end
 
 function hs = prepareHs(hs, project_folder)
@@ -57,6 +71,8 @@ K_ii = K_num(interface_dof, interface_dof);
 hs.n_floor = numel(floor_dofs);
 hs.M = fem_num.M(floor_dofs, floor_dofs);
 hs.K = K_ff - K_fi*(K_ii\K_if);
+hs.K_if = K_if;
+hs.K_ii = K_ii;
 hs.force_to_floor = K_fi/K_ii;
 hs.interface_from_floor = -K_ii\K_if;
 hs.interface_from_force = -1/K_ii;
