@@ -6,7 +6,9 @@ function [K_R, report] = design_robin_fixed(ns, opts)
 %   Nonlinear R-D paper, Section "Stability requirements and Robin-stiffness
 %   design". For each constant K_R (M_R = C_R = 0) the measured nominal state
 %   ns (robin_nominal_state) gives
-%     - the critical added delay tau_cr from the delay crossings |L_R| = 1,
+%     - the critical time delay tau_cr from the delay crossings |L_R| = 1
+%       (the measured T already contains the hardware delay, so tau_cr is
+%       the time delay that can be added to the measured loop),
 %     - the robust stability margin rho = min |dZ*| over the measured band,
 %     - the circle-condition clearance for the admitted tangent range,
 %   and the accuracy criterion of the linear R-D design,
@@ -14,7 +16,8 @@ function [K_R, report] = design_robin_fixed(ns, opts)
 %   K_R minimizes max|E^N| subject to
 %     (1) rho(K_R) >= rho(0)        (Robin must not lower the margin of
 %                                    conventional coupling),
-%     (2) tau_cr(K_R) >= tau_cr(0) and >= opts.added_delay,
+%     (2) tau_cr(K_R) >= tau_cr(0) and >= opts.added_delay (any delay
+%         expected to be added to the measured loop),
 %     (3) a positive clearance for the admitted tangent range.
 %
 %   opts: band [Hz] ([0.5 25]), admitted [N/m] ([0 1.3]*ns.k0), c_visc
@@ -79,7 +82,7 @@ r = struct('K_R', K, 'margin', min(abs(dz)), 'tau_cr', delayCrossing(ns.f, g.L),
 end
 
 function tau = delayCrossing(f, L)
-% Smallest added delay at a delay crossing |L| = 1 (Inf if none) [s].
+% Critical time delay: smallest delay at a delay crossing |L| = 1 (Inf if none) [s].
 a = abs(L);
 j = find(diff(sign(a - 1)) ~= 0);
 tau = Inf;
