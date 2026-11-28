@@ -77,6 +77,9 @@ hs = struct( ...
     'robin_pretest_window', [], ... % [t0 t1] s of its stationary part; [] = all.
     'robin_pretest_gain', 1.0, ... % Command gain during the pretest.
     'robin_design', 'adaptive', ... % 'fixed' or 'adaptive' designed operator.
+    'robin_ratio', [], ...         % Sweep case (design_robin_sweep): K_R/k0 of 'fixed'
+    ...                            % (0 = conventional) or K_cal*eta_K/k0 of 'adaptive';
+    ...                            % [] = the designed operator.
     'osi_gain_initial', 1.0, ...
     'osi_gain_min', 0.1, ...
     'target_outer_ncf', 0.4, ... % SOL_OSI regulated NCF target.
@@ -257,18 +260,14 @@ if ~isempty(hs.robin_pretest_file)
     robin_ns = robin_nominal_state(pretest_record, ...
         exp_tf_model.parametric_identification.identified_params, hs_robin, ...
         struct('num', phase_lead_num, 'den', phase_lead_den), hs.command_gain);
-    [robin_K_R0, robin_fixed_report] = design_robin_fixed(robin_ns);
-    [robin_adaptive_override, robin_adaptive_report] = ...
-        design_robin_adaptive(robin_ns, robin_K_R0);
-    switch lower(hs.robin_design)
-        case 'fixed'
-            hs.robin_override = struct('eta_M', 0, 'eta_C', 0, 'eta_K', 1, ...
-                'adapt_M', false, 'adapt_K', false, 'K_cal', robin_K_R0);
-        case 'adaptive'
-            hs.robin_override = robin_adaptive_override;
-        otherwise
-            error('hs.robin_design must be ''fixed'' or ''adaptive''.')
+    sweep_opts = struct('estimates', []);
+    if ~isempty(hs.robin_ratio)
+        [sweep_opts.ratios, sweep_opts.adaptive_ratios] = deal(hs.robin_ratio);
     end
+    [robin_cases, robin_sweep] = design_robin_sweep(robin_ns, sweep_opts);
+    robin_case = design_robin_sweep('pick', robin_cases, hs.robin_design, hs.robin_ratio);
+    fprintf('Robin case of this test: %s\n', robin_case.name)
+    hs.robin_override = robin_case.override;
     hs_robin = step_HS_robin('params', hs, dt, specimen_si, hs.robin_override);
 end
 fprintf(['SOL_OSI setup: step %.3g s, target %.3g, initial %.3g, ' ...
@@ -453,8 +452,9 @@ if exist('robin_ns', 'var')
     % Pretest nominal state and design of the Robin operator.
     result.robin_nominal = struct('k0', robin_ns.k0, 'm', robin_ns.m, ...
         'c', robin_ns.c, 'pretest_file', hs.robin_pretest_file);
-    result.robin_design = struct('fixed', robin_fixed_report.design, ...
-        'adaptive', robin_adaptive_report, 'override', hs.robin_override);
+    result.robin_design = struct('fixed', robin_sweep.fixed.design, ...
+        'adaptive', robin_sweep.adaptive, 'override', hs.robin_override, ...
+        'case', rmfield(robin_case, 'override'));
 end
 if exist('phase_lead_file', 'var')
     result.phase_lead_file = phase_lead_file;

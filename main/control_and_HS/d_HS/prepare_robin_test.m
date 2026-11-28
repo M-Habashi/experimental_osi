@@ -7,12 +7,13 @@
 %   4. build_fem_3.m with the new specimen file (5% Rayleigh damping by
 %      default; damping_ratio_override to change it) -> saved_results/fem
 %   5. This script: measured nominal state, fixed and adaptive Robin design
-%      (nonlinear R-D paper), and a vRTHS of conventional, fixed, and
-%      adaptive coupling. Proceed only if every design check passes and no
-%      vRTHS case diverges.
+%      (nonlinear R-D paper), the sweep of fixed and adaptive Robin tests
+%      (design_robin_sweep; K_R/k0 below and above the identified stiffness,
+%      including the specimen-file and 2-50 Hz fit stiffnesses), and a vRTHS
+%      of every sweep case. Run only admitted cases that do not diverge.
 %   6. main_ColumnSetup.m with fem_file, exp_tf_file, robin_specimen_file,
-%      robin_pretest_file (+ window, gain), and robin_design set to the files
-%      above. It recomputes the same design at start-up.
+%      robin_pretest_file (+ window, gain), robin_design, and robin_ratio of
+%      the sweep case. It recomputes the same design at start-up.
 % Units: SI unless stated; displacements in the records are in mm.
 
 clearvars -except prepare_overrides
@@ -35,6 +36,7 @@ intensity_factor = 0.25;
 time_scale_factor = 1.0;
 force_sign = 1.0;
 admitted = [];                % tangent range admitted before the test [N/m]; [] = [0 1.3]*k0
+ratios = [0.3 1 1.4];         % fixed K_R/k0 of the sweep besides 0, the design, and the estimates
 if exist('prepare_overrides', 'var')  % struct of the inputs above (scripted runs)
     names = fieldnames(prepare_overrides);
     for i = 1:numel(names), eval([names{i} ' = prepare_overrides.(names{i});']); end
@@ -77,17 +79,29 @@ fprintf('Pretest: k0 = %.3f kN/mm, m = %.1f kg, c = %.0f N s/m (specimen file k 
     ns.k0/1e6, ns.m, ns.c, specimen_si.stiffness/1e6)
 design_opts = struct();
 if ~isempty(admitted), design_opts.admitted = admitted; end
-[K_R0, fixed_report] = design_robin_fixed(ns, design_opts);
-[adaptive_override, adaptive_report] = design_robin_adaptive(ns, K_R0, design_opts);
-fixed_override = struct('eta_M', 0, 'eta_C', 0, 'eta_K', 1, 'adapt_M', false, ...
-    'adapt_K', false, 'K_cal', K_R0);
+design_opts.ratios = ratios;
+design_opts.estimates = [ns.k_fit, specimen_si.stiffness];   % other identified stiffnesses
+[cases, sweep] = design_robin_sweep(ns, design_opts);
+[K_R0, fixed_report, adaptive_report] = deal(sweep.K_R0, sweep.fixed, sweep.adaptive);
+adaptive_override = sweep.adaptive_override;
 
-%% vRTHS
-cases = struct('name', {'conventional', 'fixed', 'adaptive'}, 'override', ...
-    {struct('eta_M', 0, 'eta_C', 0, 'eta_K', 0, 'adapt_M', false, 'adapt_K', false), ...
-    fixed_override, adaptive_override});
-vrths = vrths_robin(ns, hs, prm, cases);
-vrths_soft = vrths_robin(ns, hs, prm, cases, struct('k_factor', 0.5));
+%% vRTHS of every sweep case, nominal and with the specimen stiffness halved
+sim = cases(1:end-1);                                 % the last case repeats the first
+for i = 1:numel(sim), sim(i).name = matlab.lang.makeValidName(sim(i).name); end
+vrths = vrths_robin(ns, hs, prm, sim);
+vrths_soft = vrths_robin(ns, hs, prm, sim, struct('k_factor', 0.5));
+fprintf('\n  %-26s %8s %9s %11s\n', 'case', 'admitted', 'vRTHS J_N', 'J_N (0.5 k0)')
+for i = 1:numel(sim)
+    [cases(i).J_N_vrths, cases(i).J_N_vrths_soft] = deal(Inf);   % Inf = diverged
+    if ~vrths.(sim(i).name).diverged, cases(i).J_N_vrths = vrths.(sim(i).name).J_N; end
+    if ~vrths_soft.(sim(i).name).diverged
+        cases(i).J_N_vrths_soft = vrths_soft.(sim(i).name).J_N;
+    end
+    fprintf('  %-26s %8d %8.1f%% %10.1f%%\n', cases(i).name, cases(i).admitted, ...
+        cases(i).J_N_vrths, cases(i).J_N_vrths_soft)
+end
+[cases(end).J_N_vrths, cases(end).J_N_vrths_soft] = deal(cases(1).J_N_vrths, ...
+    cases(1).J_N_vrths_soft);
 
 %% CHECKS AND SAVE
 conv = fixed_report.conventional;
@@ -99,17 +113,21 @@ checks = struct( ...
     'fixed_clearance_kN_mm', fixed_report.design.clearance/1e6, ...
     'adaptive_gamma', adaptive_report.gamma, ...
     'adaptive_path_min', adaptive_report.path_min_abs_1_plus_L, ...
-    'vrths_diverged', [vrths.conventional.diverged, vrths.fixed.diverged, ...
-        vrths.adaptive.diverged, vrths_soft.conventional.diverged, ...
-        vrths_soft.fixed.diverged, vrths_soft.adaptive.diverged]);
+    'sweep_not_admitted', {{cases(~[cases.admitted]).name}}, ...
+    'vrths_diverged', {{sim(~isfinite([cases(1:end-1).J_N_vrths] + ...
+        [cases(1:end-1).J_N_vrths_soft])).name}});
 disp(checks)
 if conv.clearance <= 0 || 1e3*conv.tau_cr < 50
     warning(['Conventional coupling has a small stability reserve (critical time ' ...
         'delay %.1f ms, clearance %.2f kN/mm); consider more structural damping ' ...
         'for the conventional test.'], 1e3*conv.tau_cr, conv.clearance/1e6)
 end
-if any(checks.vrths_diverged) || adaptive_report.gamma >= 1
+if ~isempty(checks.vrths_diverged) || adaptive_report.gamma >= 1
     warning('A design check failed; do not run the hardware test with this design.')
+end
+if ~isempty(checks.sweep_not_admitted)
+    warning('Sweep cases that fail the pretest checks (do not run): %s', ...
+        strjoin(checks.sweep_not_admitted, ', '))
 end
 [~, stem] = fileparts(pretest_file);
 out_dir = fullfile(project_root, 'saved_results', 'robin_designs');
@@ -118,8 +136,8 @@ out_file = fullfile(out_dir, [stem '_robin_design.mat']);
 nominal = rmfield(ns, {'T', 'Tg', 'C0', 'Z0', 'ZN'});
 save(out_file, 'pretest_file', 'pretest_window', 'pretest_gain', 'specimen_file', ...
     'exp_tf_file', 'fem_file', 'phase_lead_file', 'command_gain', 'nominal', ...
-    'K_R0', 'fixed_override', 'adaptive_override', 'fixed_report', ...
-    'adaptive_report', 'checks')
+    'K_R0', 'adaptive_override', 'fixed_report', 'adaptive_report', 'cases', ...
+    'checks')
 fprintf('Design saved: %s\n', out_file)
 
 function file = savedFile(project_root, folder, name)

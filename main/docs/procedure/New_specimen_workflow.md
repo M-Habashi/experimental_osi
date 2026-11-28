@@ -45,11 +45,25 @@ Paths are relative to `main`.
   `exp_tf_file`, `fem_file`, `phase_lead_file`, test `command_gain`,
   earthquake, intensity, time scale) and run it.
 - It prints the fixed design (with the margin rule used), the adaptive
-  settings, and a vRTHS of conventional, fixed, and adaptive coupling at the
-  nominal and at half the specimen stiffness, then saves
-  `saved_results/robin_designs/<pretest>_robin_design.mat`.
+  settings, and the sweep of Robin tests (`design_robin_sweep`), with a vRTHS
+  of every case at the nominal and at half the specimen stiffness, then saves
+  `saved_results/robin_designs/<pretest>_robin_design.mat` (`cases` holds
+  the sweep table).
+- Sweep: the identified stiffness depends on the estimator and the record
+  window, so the tests use Robin stiffnesses below and above it, r = K_R/k0:
+  0 (conventional), the fixed design, `ratios` (default 0.3, 1, 1.4), and the
+  2-50 Hz fit and specimen-file stiffnesses; each fixed case has an adaptive
+  case with the same stiffness at rest (`K_cal` eta_K = r k0, limited to
+  [K_min, K_max]). A fixed case is admitted if its critical time delay is at
+  least that of conventional coupling, its clearance > 0, and its margin is
+  at least that of conventional coupling or above the largest admitted
+  tangent change. The table is in run order: conventional; the design, then
+  the other ratios farthest from the design first, fixed and adaptive back to
+  back; conventional again (run-to-run scatter). Drop cases from the end of
+  the list if time is short; rerun the pretest between tests if the specimen
+  may have yielded.
 - Go only if: adaptive `gamma` < 1, the fixed clearance > 0, and no vRTHS
-  case diverges. Run a conventional test only if its critical time delay is
+  case diverges. Run only sweep cases marked admitted. Run a conventional test only if its critical time delay is
   at least about 50 ms and its clearance > 0 (a warning is printed
   otherwise).
 - Design rules (from the pretest only): the fixed `K_R` minimizes the linear
@@ -69,20 +83,26 @@ Update the `hs` struct:
 - `robin_specimen_file` -> the new specimen file.
 - `robin_pretest_file` -> the pretest (under `saved_results/tests`),
   `robin_pretest_window`, `robin_pretest_gain` = 1.
-- Conventional test: `robin_enable` = 0. Robin tests: `robin_enable` = 1 and
-  `robin_design` = `'fixed'` or `'adaptive'`.
+- Conventional test: `robin_enable` = 0. Robin tests: `robin_enable` = 1,
+  `robin_design` = `'fixed'` or `'adaptive'`, and `robin_ratio` = r of the
+  sweep case ([] = the designed operator; `'fixed'` with 0 = conventional
+  through the Robin block). main_ColumnSetup stops if the case is not
+  admitted.
 - `command_gain`, `earthquake_type`, `intensity_factor`, `time_scale_factor`,
   `structural_model` = `'linear'`.
-At start-up the script recomputes the design from the pretest and prints
-"Robin stiffness: K_cal, initial K_R, adaptive range"; it must match step 5.
-Then follow `test_procedure.md`. Keep the order and intensity the same for
-the three couplings and note the loading history of the specimen.
+At start-up the script recomputes the design and the sweep from the pretest,
+prints "Robin case of this test" and "Robin stiffness: K_cal, initial K_R,
+adaptive range"; they must match step 5.
+Then follow `test_procedure.md`. Use the same earthquake and intensity for every
+sweep case, run them in the order of the sweep table, and note the loading
+history of the specimen.
 
 ## 7. After each test
 - `plot_test_result` runs automatically. Robin tests are replayed with their
   own block (`replay_hs_robin`), which also gives `u_I^N` and `K_R`.
 - The saved `result` now contains `hs_robin`, `hs_robin_enable`,
-  `robin_nominal` (pretest k0, m, c), and `robin_design`.
+  `robin_nominal` (pretest k0, m, c), and `robin_design` (with `case`, the
+  sweep case of the test).
 - J4-J7 use the hybrid reference with the linear pretest specimen. For a
   nonlinear specimen, the paper reference uses a specimen law fitted after
   the test (RTHS-Nonlinear-Robin-Dirichlet repository, `analysis/`).
